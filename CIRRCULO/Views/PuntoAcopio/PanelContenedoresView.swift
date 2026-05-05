@@ -3,6 +3,7 @@ import SwiftUI
 struct PanelContenedoresView: View {
     @State private var punto = MockDataService.shared.puntosAcopio[0]
     @State private var solicitudEnviada = false
+    @State private var animado = false
 
     private var porcentajeVerde: Double { 0.45 }
     private var porcentajeGris: Double {
@@ -10,126 +11,269 @@ struct PanelContenedoresView: View {
         return min(total / punto.capacidadTotal, 1.0)
     }
     private var porcentajeNaranja: Double { 0.22 }
+    private var necesitaRecoleccion: Bool { porcentajeGris > 0.7 || porcentajeVerde > 0.7 }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 20) {
-                    // Barras de contenedores
-                    VStack(spacing: 16) {
-                        ContenedorBar(
-                            nombre: "Verde (Orgánicos)",
-                            porcentaje: porcentajeVerde,
-                            color: Color(hex: "#4CAF50"),
-                            dias: "Mar, Jue, Sáb"
-                        )
-                        ContenedorBar(
-                            nombre: "Gris (Reciclables)",
-                            porcentaje: porcentajeGris,
-                            color: Color(hex: "#607D8B"),
-                            dias: "Lun, Mié, Vie, Dom"
-                        )
-                        ContenedorBar(
-                            nombre: "Naranja (No reciclables)",
-                            porcentaje: porcentajeNaranja,
-                            color: Color(hex: "#FF5722"),
-                            dias: "Lun, Mié, Vie, Dom"
-                        )
-                    }
-                    .padding()
-                    .background(Color(.systemBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .shadow(color: .black.opacity(0.06), radius: 6)
-                    .padding(.horizontal)
+                VStack(spacing: 0) {
+                    // Header
+                    PanelContenedoresHeader(punto: punto)
 
-                    // Solicitar recolección
-                    if porcentajeGris > 0.7 || porcentajeVerde > 0.7 {
-                        Button {
-                            withAnimation { solicitudEnviada = true }
-                        } label: {
-                            if solicitudEnviada {
-                                Label("Solicitud enviada", systemImage: "checkmark.circle.fill")
-                                    .font(.headline)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 14)
-                                    .background(Color(hex: "#4CAF50"))
-                                    .foregroundStyle(.white)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                            } else {
-                                Label("Solicitar recolección", systemImage: "bell.badge.fill")
-                                    .font(.headline)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 14)
-                                    .background(Color(hex: "#FF5722"))
-                                    .foregroundStyle(.white)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    VStack(spacing: 20) {
+                        // Contenedores
+                        VStack(alignment: .leading, spacing: 16) {
+                            SectionHeader(titulo: "Estado de contenedores",
+                                          icono: "trash.fill",
+                                          color: Color(hex: "#6A1B9A"))
+
+                            VStack(spacing: 14) {
+                                ContenedorCard(
+                                    nombre: "Verde — Orgánicos",
+                                    porcentaje: porcentajeVerde,
+                                    color: Color(hex: "#4CAF50"),
+                                    dias: "Mar, Jue, Sáb",
+                                    animado: animado
+                                )
+                                ContenedorCard(
+                                    nombre: "Gris — Reciclables",
+                                    porcentaje: porcentajeGris,
+                                    color: Color(hex: "#607D8B"),
+                                    dias: "Lun, Mié, Vie, Dom",
+                                    animado: animado
+                                )
+                                ContenedorCard(
+                                    nombre: "Naranja — No reciclables",
+                                    porcentaje: porcentajeNaranja,
+                                    color: Color(hex: "#FF5722"),
+                                    dias: "Lun, Mié, Vie, Dom",
+                                    animado: animado
+                                )
                             }
                         }
-                        .padding(.horizontal)
-                    }
+                        .padding(.horizontal, 20)
 
-                    // Depósitos de hoy
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Depósitos de hoy")
-                            .font(.headline)
-                            .padding(.horizontal)
-
-                        ForEach(MockDataService.shared.historialDepositos.prefix(3)) { ticket in
-                            HStack {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(Color(hex: "#4CAF50"))
-                                VStack(alignment: .leading) {
-                                    Text("Ciudadano anónimo")
-                                        .font(.subheadline.bold())
-                                    Text(ticket.timestamp, style: .time)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                        // Alerta recolección
+                        if necesitaRecoleccion {
+                            Button {
+                                withAnimation(.spring()) { solicitudEnviada = true }
+                            } label: {
+                                HStack {
+                                    Image(systemName: solicitudEnviada ? "checkmark.circle.fill" : "bell.badge.fill")
+                                    Text(solicitudEnviada ? "Solicitud enviada" : "Solicitar recolección")
+                                        .font(.headline)
                                 }
-                                Spacer()
-                                Text("\(String(format: "%.1f", ticket.materiales.values.reduce(0, +))) kg")
-                                    .font(.subheadline.bold())
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(
+                                    solicitudEnviada
+                                        ? AnyShapeStyle(Color(hex: "#4CAF50"))
+                                        : AnyShapeStyle(LinearGradient(
+                                            colors: [Color(hex: "#AB47BC"), Color(hex: "#6A1B9A")],
+                                            startPoint: .leading, endPoint: .trailing
+                                        ))
+                                )
+                                .foregroundStyle(.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                .shadow(color: solicitudEnviada
+                                        ? Color(hex: "#4CAF50").opacity(0.3)
+                                        : Color(hex: "#6A1B9A").opacity(0.35), radius: 8, y: 4)
                             }
-                            .padding()
-                            .background(Color(.systemBackground))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                            .padding(.horizontal)
+                            .padding(.horizontal, 20)
+                            .disabled(solicitudEnviada)
+                            .transition(.move(edge: .top).combined(with: .opacity))
                         }
+
+                        // Depósitos de hoy
+                        VStack(alignment: .leading, spacing: 12) {
+                            SectionHeader(titulo: "Depósitos de hoy",
+                                          icono: "clock.badge.checkmark.fill",
+                                          color: Color(hex: "#6A1B9A"))
+
+                            VStack(spacing: 0) {
+                                ForEach(Array(MockDataService.shared.historialDepositos.prefix(3).enumerated()), id: \.offset) { idx, ticket in
+                                    DepositoHoyRow(ticket: ticket)
+                                    if idx < 2 {
+                                        Divider().padding(.horizontal, 16)
+                                    }
+                                }
+                            }
+                            .background(Color(.systemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            .shadow(color: .black.opacity(0.06), radius: 8, y: 3)
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 32)
                     }
+                    .padding(.top, 24)
                 }
-                .padding(.vertical)
             }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("Panel de Contenedores")
-            .navigationBarTitleDisplayMode(.inline)
+            .ignoresSafeArea(edges: .top)
+            .navigationBarHidden(true)
+            .onAppear {
+                withAnimation { animado = true }
+            }
         }
     }
 }
 
-struct ContenedorBar: View {
+// MARK: - Header
+
+struct PanelContenedoresHeader: View {
+    let punto: PuntoAcopio
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            LinearGradient(
+                colors: [Color(hex: "#4A148C"), Color(hex: "#6A1B9A"), Color(hex: "#7B1FA2")],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+            Circle().fill(.white.opacity(0.05)).frame(width: 200).offset(x: 130, y: -30)
+            Circle().fill(.white.opacity(0.04)).frame(width: 140).offset(x: -70, y: 25)
+
+            VStack(spacing: 16) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Panel de Acopio")
+                            .font(.title2.bold())
+                            .foregroundStyle(.white)
+                        Text(punto.nombre)
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.75))
+                    }
+                    Spacer()
+                    Image(systemName: "mappin.circle.fill")
+                        .font(.system(size: 36))
+                        .foregroundStyle(.white.opacity(0.3))
+                }
+
+                HStack(spacing: 0) {
+                    PanelStat(valor: "3", label: "contenedores")
+                    Divider().frame(width: 1, height: 32).background(.white.opacity(0.3))
+                    PanelStat(valor: "12", label: "depósitos hoy")
+                    Divider().frame(width: 1, height: 32).background(.white.opacity(0.3))
+                    PanelStat(valor: "\(String(format: "%.0f", punto.capacidadTotal)) kg", label: "capacidad")
+                }
+                .padding(.vertical, 14)
+                .frame(maxWidth: .infinity)
+                .background(.white.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 60)
+            .padding(.bottom, 24)
+        }
+    }
+}
+
+struct PanelStat: View {
+    let valor: String
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(valor).font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
+            Text(label).font(.caption2).foregroundStyle(.white.opacity(0.7))
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Contenedor Card
+
+struct ContenedorCard: View {
     let nombre: String
     let porcentaje: Double
     let color: Color
     let dias: String
+    let animado: Bool
+
+    private var alerta: Bool { porcentaje > 0.7 }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(spacing: 10) {
             HStack {
-                Circle()
-                    .fill(color)
-                    .frame(width: 12, height: 12)
-                Text(nombre)
-                    .font(.subheadline.bold())
+                HStack(spacing: 8) {
+                    Circle().fill(color).frame(width: 12, height: 12)
+                    Text(nombre).font(.subheadline.bold())
+                }
                 Spacer()
                 Text(String(format: "%.0f%%", porcentaje * 100))
-                    .font(.subheadline.bold())
-                    .foregroundStyle(color)
+                    .font(.headline.bold())
+                    .foregroundStyle(alerta ? Color(hex: "#FF5722") : color)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background((alerta ? Color(hex: "#FF5722") : color).opacity(0.12))
+                    .clipShape(Capsule())
             }
-            ProgressView(value: porcentaje)
-                .tint(color)
-            Text("Recolección: \(dias)")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color(.systemGray6))
+                        .frame(height: 10)
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(alerta
+                              ? LinearGradient(colors: [Color(hex: "#FF5722"), Color(hex: "#D32F2F")],
+                                               startPoint: .leading, endPoint: .trailing)
+                              : LinearGradient(colors: [color.opacity(0.7), color],
+                                               startPoint: .leading, endPoint: .trailing))
+                        .frame(width: animado ? geo.size.width * porcentaje : 0, height: 10)
+                        .animation(.spring(response: 0.8).delay(0.2), value: animado)
+                }
+            }
+            .frame(height: 10)
+
+            HStack {
+                Label(dias, systemImage: "calendar")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if alerta {
+                    Label("Lleno — solicitar recolección", systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption2.bold())
+                        .foregroundStyle(Color(hex: "#FF5722"))
+                }
+            }
         }
+        .padding(16)
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.05), radius: 6, y: 2)
+    }
+}
+
+// MARK: - Depósito Row
+
+struct DepositoHoyRow: View {
+    let ticket: DepositoTicket
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(ticket.verificado ? Color(hex: "#E8F5E9") : Color(hex: "#FFF8E1"))
+                    .frame(width: 42, height: 42)
+                Image(systemName: ticket.verificado ? "checkmark.circle.fill" : "clock.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(ticket.verificado ? Color(hex: "#4CAF50") : Color(hex: "#F9A825"))
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Ciudadano verificado")
+                    .font(.subheadline.bold())
+                Text(ticket.timestamp, style: .time)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Text("\(String(format: "%.1f", ticket.materiales.values.reduce(0, +))) kg")
+                .font(.subheadline.bold())
+                .foregroundStyle(Color(hex: "#6A1B9A"))
+        }
+        .padding(16)
     }
 }
 

@@ -75,6 +75,19 @@ struct EmpleadoRow: View {
     }
 }
 
+struct StatItem: View {
+    let valor: String
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(valor).font(.headline.bold()).foregroundStyle(Color(hex: "#1565C0"))
+            Text(label).font(.caption2).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
 struct AgregarEmpleadoSheet: View {
     @Binding var nombre: String
     let onAgregar: () -> Void

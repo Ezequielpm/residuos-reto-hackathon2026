@@ -11,33 +11,73 @@ struct MapaRutasView: View {
         )
     )
 
+    private var disponibles: Int { solicitudes.filter { $0.estado == .disponible }.count }
+
     var body: some View {
-        NavigationStack {
+        ZStack(alignment: .bottom) {
             Map(position: $position) {
                 ForEach(solicitudes) { solicitud in
-                    Annotation(solicitud.puntoAcopio.nombre,
-                               coordinate: solicitud.puntoAcopio.coordenadas) {
-                        SolicitudPin(solicitud: solicitud)
+                    Annotation("", coordinate: solicitud.puntoAcopio.coordenadas) {
+                        SolicitudPinV2(solicitud: solicitud)
                             .onTapGesture { seleccionada = solicitud }
                     }
                 }
                 UserAnnotation()
             }
-            .navigationTitle("Rutas disponibles")
-            .navigationBarTitleDisplayMode(.inline)
-            .sheet(item: $seleccionada) { solicitud in
-                DetallePuntoView(solicitud: Binding(
+            .mapStyle(.standard(elevation: .realistic))
+            .ignoresSafeArea()
+
+            // Barra superior
+            VStack {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Rutas disponibles")
+                            .font(.title3.bold())
+                        Text("\(disponibles) solicitudes activas")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    ZStack {
+                        Circle()
+                            .fill(disponibles > 0 ? Color(hex: "#E65100") : Color(.systemGray5))
+                            .frame(width: 40, height: 40)
+                        Text("\(disponibles)")
+                            .font(.headline.bold())
+                            .foregroundStyle(.white)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
+                .background(.regularMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .shadow(color: .black.opacity(0.1), radius: 8, y: 3)
+                .padding(.horizontal, 16)
+                .padding(.top, 60)
+                Spacer()
+            }
+
+            // Leyenda
+            HStack(spacing: 16) {
+                LeyendaItem(color: Color(hex: "#E65100"), texto: "Disponible")
+                LeyendaItem(color: Color(.systemGray3), texto: "Reclamada")
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(.regularMaterial)
+            .clipShape(Capsule())
+            .padding(.bottom, 100)
+        }
+        .sheet(item: $seleccionada) { solicitud in
+            DetallePuntoView(
+                solicitud: Binding(
                     get: { solicitud },
                     set: { seleccionada = $0 }
-                ), onReclamar: {
-                    reclamar(solicitud)
-                })
-                .presentationDetents([.medium, .large])
-            }
-            .overlay(alignment: .bottom) {
-                ContadorSolicitudes(cantidad: solicitudes.filter { $0.estado == .disponible }.count)
-                    .padding(.bottom, 12)
-            }
+                ),
+                onReclamar: { reclamar(solicitud) }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
     }
 
@@ -50,30 +90,43 @@ struct MapaRutasView: View {
     }
 }
 
-struct SolicitudPin: View {
+struct SolicitudPinV2: View {
     let solicitud: SolicitudRecoleccion
+    private var disponible: Bool { solicitud.estado == .disponible }
 
     var body: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: 0) {
             ZStack {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(solicitud.estado == .disponible ? Color(hex: "#F9A825") : Color(.systemGray4))
-                    .frame(width: 54, height: 44)
-                    .shadow(radius: 3)
+                // Sombra
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.black.opacity(0.15))
+                    .frame(width: 68, height: 52)
+                    .offset(y: 3)
+                    .blur(radius: 4)
+
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(disponible
+                          ? LinearGradient(colors: [Color(hex: "#FF7043"), Color(hex: "#E65100")],
+                                           startPoint: .topLeading, endPoint: .bottomTrailing)
+                          : LinearGradient(colors: [Color(.systemGray4), Color(.systemGray3)],
+                                           startPoint: .top, endPoint: .bottom)
+                    )
+                    .frame(width: 68, height: 52)
 
                 VStack(spacing: 1) {
-                    Text("\(String(format: "%.0f", solicitud.kgEstimados)) kg")
-                        .font(.caption2.bold())
-                        .foregroundStyle(solicitud.estado == .disponible ? .white : .secondary)
+                    Text(String(format: "%.0f kg", solicitud.kgEstimados))
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.white)
                     Text("$\(String(format: "%.0f", solicitud.valorEstimado))")
-                        .font(.caption2)
-                        .foregroundStyle(solicitud.estado == .disponible ? .white.opacity(0.9) : .secondary)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.white.opacity(0.85))
                 }
             }
-            // Triángulo
+
+            // Puntero
             Triangle()
-                .fill(solicitud.estado == .disponible ? Color(hex: "#F9A825") : Color(.systemGray4))
-                .frame(width: 10, height: 6)
+                .fill(disponible ? Color(hex: "#E65100") : Color(.systemGray3))
+                .frame(width: 12, height: 7)
         }
     }
 }
@@ -89,21 +142,16 @@ struct Triangle: Shape {
     }
 }
 
-struct ContadorSolicitudes: View {
-    let cantidad: Int
+struct LeyendaItem: View {
+    let color: Color
+    let texto: String
 
     var body: some View {
-        Label("\(cantidad) solicitudes disponibles", systemImage: "circle.fill")
-            .font(.subheadline.bold())
-            .foregroundStyle(Color(hex: "#F9A825"))
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(.regularMaterial)
-            .clipShape(Capsule())
-            .shadow(radius: 4)
+        HStack(spacing: 6) {
+            Circle().fill(color).frame(width: 8, height: 8)
+            Text(texto).font(.caption.bold()).foregroundStyle(.secondary)
+        }
     }
 }
 
-#Preview {
-    MapaRutasView()
-}
+#Preview { MapaRutasView() }

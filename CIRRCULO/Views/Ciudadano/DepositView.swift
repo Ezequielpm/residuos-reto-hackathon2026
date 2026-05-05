@@ -66,26 +66,43 @@ struct TicketView: View {
     let onIrADepositar: () -> Void
     let onVerificarEnPunto: () -> Void
 
+    private var materialesOrdenados: [TipoResiduo] {
+        materiales.keys.sorted { $0.rawValue < $1.rawValue }
+    }
+
     var body: some View {
-        VStack(spacing: 20) {
-            // Header
-            VStack(spacing: 8) {
-                Image(systemName: "doc.text.fill")
-                    .font(.system(size: 40))
-                    .foregroundStyle(Color(hex: "#388E3C"))
-                Text("Tu ticket de reciclaje")
-                    .font(.title2.bold())
-                Text("Materiales listos para depositar")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+        VStack(spacing: 24) {
+            // Header Card
+            ZStack {
+                LinearGradient(
+                    colors: [Color(hex: "#2E7D32"), Color(hex: "#388E3C")],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .shadow(color: Color(hex: "#2E7D32").opacity(0.3), radius: 12, y: 6)
+
+                VStack(spacing: 10) {
+                    Image(systemName: "doc.text.fill")
+                        .font(.system(size: 32))
+                        .foregroundStyle(.white.opacity(0.8))
+
+                    VStack(spacing: 4) {
+                        Text("\(totalPuntos)")
+                            .font(.system(size: 44, weight: .black))
+                            .foregroundStyle(.white)
+                        Text("puntos al depositar")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.85))
+                    }
+                }
+                .padding(24)
             }
-            .padding(.top, 8)
 
             if materiales.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "camera.viewfinder")
-                        .font(.system(size: 48))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 52))
+                        .foregroundStyle(Color(.systemGray3))
                     Text("Escanea residuos en la pestaña Escanear para agregarlos a tu ticket")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -95,51 +112,49 @@ struct TicketView: View {
             } else {
                 // Lista de materiales
                 VStack(spacing: 0) {
-                    ForEach(materiales.keys.sorted(by: { $0.rawValue < $1.rawValue }), id: \.self) { tipo in
+                    ForEach(materialesOrdenados, id: \.self) { tipo in
                         MaterialRow(tipo: tipo, kg: materiales[tipo] ?? 0)
-                        if tipo != materiales.keys.sorted(by: { $0.rawValue < $1.rawValue }).last {
-                            Divider().padding(.horizontal)
+                        if tipo != materialesOrdenados.last {
+                            Divider().padding(.horizontal, 16)
                         }
                     }
                 }
                 .background(Color(.systemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .shadow(color: .black.opacity(0.06), radius: 6)
-
-                // Total
-                HStack {
-                    Label("Total estimado", systemImage: "star.fill")
-                        .font(.headline)
-                        .foregroundStyle(Color(hex: "#388E3C"))
-                    Spacer()
-                    Text("\(totalPuntos) puntos")
-                        .font(.title3.bold())
-                        .foregroundStyle(Color(hex: "#388E3C"))
-                }
-                .padding()
-                .background(Color(hex: "#E8F5E9"))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .shadow(color: .black.opacity(0.06), radius: 8, y: 3)
 
                 // Botones
                 VStack(spacing: 10) {
                     Button(action: onVerificarEnPunto) {
-                        Label("Ya estoy en el punto — verificar QR", systemImage: "qrcode.viewfinder")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(Color(hex: "#388E3C"))
-                            .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        HStack {
+                            Image(systemName: "qrcode.viewfinder")
+                            Text("Ya estoy en el punto — verificar QR")
+                                .font(.headline)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            LinearGradient(
+                                colors: [Color(hex: "#388E3C"), Color(hex: "#2E7D32")],
+                                startPoint: .leading, endPoint: .trailing
+                            )
+                        )
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .shadow(color: Color(hex: "#2E7D32").opacity(0.3), radius: 8, y: 4)
                     }
 
                     Button(action: onIrADepositar) {
-                        Label("Ver puntos de acopio cercanos", systemImage: "map.fill")
-                            .font(.subheadline)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Color(.systemGray6))
-                            .foregroundStyle(.primary)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        HStack {
+                            Image(systemName: "map.fill")
+                            Text("Ver puntos de acopio cercanos")
+                                .font(.subheadline)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color(.systemGray6))
+                        .foregroundStyle(.primary)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
                 }
             }
