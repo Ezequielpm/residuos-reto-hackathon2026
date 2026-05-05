@@ -55,10 +55,18 @@ actor FoundationModelsService {
 
     func pregunta(_ texto: String) async -> String {
         if #available(iOS 26.0, *) {
+            print("[FM] availability=\(SystemLanguageModel.default.availability)")
+            guard SystemLanguageModel.default.isAvailable else {
+                return await fallbackConDelay(para: texto)
+            }
             do {
                 let session = LanguageModelSession(instructions: systemPrompt)
-                return try await session.respond(to: texto).content
+                session.prewarm()
+                let respuesta = try await session.respond(to: texto).content
+                print("[FM] respuesta OK (\(respuesta.count) chars)")
+                return respuesta
             } catch {
+                print("[FM] respond falló: \(error)")
                 return respuestaHardcodeada(para: texto)
             }
         }
