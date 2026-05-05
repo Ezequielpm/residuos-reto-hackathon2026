@@ -45,7 +45,7 @@
 		463A9BF9B1F89F1CDEC4FEF5 /* PreciosMaterialView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreciosMaterialView.swift; sourceTree = "<group>"; };
 		479CABA4DCCB6B93E40A3719 /* ProximaRecoleccion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProximaRecoleccion.swift; sourceTree = "<group>"; };
 		47B5B7240C566FD3F631C804 /* QREstaticoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QREstaticoView.swift; sourceTree = "<group>"; };
-		48E0B831C5EA4088BBC61F60 /* CIRRCULO.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CIRRCULO.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		48E0B831C5EA4088BBC61F60 /* CIRRCULO.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CIRRCULO.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		53A97DE18C7E3CC688A72FEE /* MapaRutasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapaRutasView.swift; sourceTree = "<group>"; };
 		56A676FF80563FB7404AAD40 /* DepositView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepositView.swift; sourceTree = "<group>"; };
 		58EEF74177627B3F7D92631C /* ProfileSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSelectorView.swift; sourceTree = "<group>"; };
@@ -245,11 +245,6 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1500;
-				TargetAttributes = {
-					2A21E1010B003EFA2B985E54 = {
-						DevelopmentTeam = "";
-					};
-				};
 			};
 			buildConfigurationList = 26A2F2367A18F66AD3ED9F39 /* Build configuration list for PBXProject "CIRRCULO" */;
 			developmentRegion = en;
@@ -323,13 +318,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = 5TYGRWSCT7;
 				INFOPLIST_FILE = CIRRCULO/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = mx.enactus.cirrculo;
+				PRODUCT_BUNDLE_IDENTIFIER = mx.enactus.cirrculo1;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -399,13 +395,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = 5TYGRWSCT7;
 				INFOPLIST_FILE = CIRRCULO/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = mx.enactus.cirrculo;
+				PRODUCT_BUNDLE_IDENTIFIER = mx.enactus.cirrculo1;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
