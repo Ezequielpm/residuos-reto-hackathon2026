@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ResumenLegalView: View {
-    @State private var registro = MockDataService.shared.registroEmpresa
+    @ObservedObject var vm: EmpresaViewModel
     @State private var resumenGenerado: String?
     @State private var generando = false
     @State private var copiado = false
@@ -10,23 +10,20 @@ struct ResumenLegalView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Header
                     VStack(spacing: 12) {
                         Image(systemName: "doc.badge.gearshape.fill")
                             .font(.system(size: 48))
                             .foregroundStyle(Color(hex: "#1565C0"))
-
                         Text("Resumen para Auditoría")
                             .font(.title2.bold())
-
-                        Text("Genera un párrafo ejecutivo con los datos de reciclaje del mes para presentar ante SEDEMA y auditores.")
+                        Text("Genera un párrafo ejecutivo con los datos del mes para presentar ante SEDEMA.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
                     }
                     .padding(.horizontal)
 
-                    // Datos usados
+                    // Datos del mes
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Datos del mes")
                             .font(.headline)
@@ -34,13 +31,12 @@ struct ResumenLegalView: View {
 
                         VStack(spacing: 0) {
                             DatoRow(label: "Kg totales registrados",
-                                    valor: String(format: "%.1f kg", registro.kgTotalesMes))
+                                    valor: String(format: "%.1f kg", vm.registro.kgTotalesMes))
                             DatoRow(label: "Registros documentados",
-                                    valor: "\(registro.residuosRegistrados.count)")
+                                    valor: "\(vm.registro.residuosRegistrados.count)")
                             DatoRow(label: "Ahorro fiscal estimado",
-                                    valor: "$\(String(format: "%.0f", registro.ahorroFiscalEstimado)) MXN")
-                            DatoRow(label: "Marco legal",
-                                    valor: "LGPGIR + NADF-024")
+                                    valor: "$\(String(format: "%.0f", vm.registro.ahorroFiscalEstimado)) MXN")
+                            DatoRow(label: "Marco legal", valor: "LGPGIR + NADF-024")
                         }
                         .background(Color(.systemBackground))
                         .clipShape(RoundedRectangle(cornerRadius: 14))
@@ -49,14 +45,11 @@ struct ResumenLegalView: View {
                     }
 
                     // Botón generar
-                    Button {
-                        generarResumen()
-                    } label: {
+                    Button { generarResumen() } label: {
                         if generando {
                             HStack {
-                                ProgressView()
-                                    .tint(.white)
-                                Text("Generando con Apple Intelligence...")
+                                ProgressView().tint(.white)
+                                Text("Generando con Apple Intelligence…")
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
@@ -124,7 +117,7 @@ struct ResumenLegalView: View {
     private func generarResumen() {
         generando = true
         Task {
-            let texto = await FoundationModelsService.shared.resumenEjecutivoEmpresa(registro)
+            let texto = await FoundationModelsService.shared.resumenEjecutivoEmpresa(vm.registro)
             await MainActor.run {
                 resumenGenerado = texto
                 generando = false
@@ -139,19 +132,12 @@ struct DatoRow: View {
 
     var body: some View {
         HStack {
-            Text(label)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            Text(label).font(.subheadline).foregroundStyle(.secondary)
             Spacer()
-            Text(valor)
-                .font(.subheadline.bold())
+            Text(valor).font(.subheadline.bold())
         }
         .padding(.horizontal)
         .padding(.vertical, 12)
         Divider().padding(.horizontal)
     }
-}
-
-#Preview {
-    ResumenLegalView()
 }

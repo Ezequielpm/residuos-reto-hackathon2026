@@ -1,10 +1,12 @@
 import SwiftUI
 
 struct ScannerEmpresaView: View {
+    @ObservedObject var vm: EmpresaViewModel
     @StateObject private var camera = CameraService()
+
     @State private var resultado: ResultadoClasificacion?
-    @State private var registrosHoy: [RegistroResiduo] = []
     @State private var mostrandoConfirmacion = false
+    @State private var contadorSesion = 0
 
     var body: some View {
         NavigationStack {
@@ -14,13 +16,18 @@ struct ScannerEmpresaView: View {
 
                 ScannerOverlay()
 
-                VStack(spacing: 0) {
+                VStack {
                     Spacer()
 
-                    // Panel corporativo
                     if let resultado {
                         PanelEmpresaResultado(resultado: resultado) {
-                            registrarEscaneo(resultado)
+                            vm.registrarEscaneo(tipo: resultado.tipo)
+                            contadorSesion += 1
+                            withAnimation { mostrandoConfirmacion = true }
+                            Task {
+                                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                                await MainActor.run { withAnimation { mostrandoConfirmacion = false } }
+                            }
                         }
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                     } else {
@@ -40,9 +47,11 @@ struct ScannerEmpresaView: View {
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Label("\(registrosHoy.count) registros", systemImage: "doc.badge.plus")
-                        .font(.caption.bold())
-                        .foregroundStyle(Color(hex: "#1565C0"))
+                    if contadorSesion > 0 {
+                        Label("\(contadorSesion) registrados", systemImage: "checkmark.circle.fill")
+                            .font(.caption.bold())
+                            .foregroundStyle(Color(hex: "#4CAF50"))
+                    }
                 }
             }
             .overlay(alignment: .top) {
@@ -58,26 +67,11 @@ struct ScannerEmpresaView: View {
             guard let buffer else { return }
             Task {
                 if let r = await ClassifierService.shared.clasificar(pixelBuffer: buffer) {
-                    withAnimation(.spring(response: 0.4)) { resultado = r }
+                    await MainActor.run {
+                        withAnimation(.spring(response: 0.4)) { resultado = r }
+                    }
                 }
             }
-        }
-    }
-
-    private func registrarEscaneo(_ r: ResultadoClasificacion) {
-        let nuevo = RegistroResiduo(
-            id: UUID(),
-            tipo: r.tipo,
-            kg: 0.5,
-            timestamp: Date(),
-            empleadoId: "emp-demo-01",
-            destinoCentroAcopio: "Centro de Acopio Sur CDMX"
-        )
-        registrosHoy.append(nuevo)
-        withAnimation { mostrandoConfirmacion = true }
-        Task {
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            await MainActor.run { withAnimation { mostrandoConfirmacion = false } }
         }
     }
 }
@@ -95,47 +89,45 @@ struct PanelEmpresaResultado: View {
     }
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 0) {
             Rectangle()
                 .fill(Color(hex: "#1565C0"))
                 .frame(height: 4)
 
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(resultado.tipo.rawValue)
-                        .font(.title2.bold())
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(colorContenedor)
-                            .frame(width: 10, height: 10)
-                        Text("Contenedor \(resultado.contenedor.rawValue)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+            VStack(spacing: 16) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(resultado.tipo.rawValue)
+                            .font(.title2.bold())
+                        HStack(spacing: 6) {
+                            Circle().fill(colorContenedor).frame(width: 10, height: 10)
+                            Text("Contenedor \(resultado.contenedor.rawValue)")
+                                .font(.subheadline).foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text("$\(String(format: "%.2f", resultado.valorMercado))/kg")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(Color(hex: "#1565C0"))
+                        Text("valor mercado")
+                            .font(.caption2).foregroundStyle(.secondary)
                     }
                 }
-                Spacer()
-                VStack(alignment: .trailing) {
-                    Text("$\(String(format: "%.2f", resultado.valorMercado))/kg")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(Color(hex: "#1565C0"))
-                    Text("valor mercado")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+
+                Button(action: onRegistrar) {
+                    Label("Registrar en dashboard", systemImage: "plus.circle.fill")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color(hex: "#1565C0"))
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
             }
-
-            Button(action: onRegistrar) {
-                Label("Registrar en dashboard", systemImage: "plus.circle.fill")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color(hex: "#1565C0"))
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-            }
+            .padding()
+            .background(Color(.systemBackground))
         }
-        .padding()
-        .background(Color(.systemBackground))
     }
 }
 
@@ -154,8 +146,4 @@ struct RegistradoBanner: View {
         .shadow(radius: 4)
         .padding(.top, 8)
     }
-}
-
-#Preview {
-    ScannerEmpresaView()
 }

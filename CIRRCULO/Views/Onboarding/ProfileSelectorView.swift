@@ -189,21 +189,23 @@ struct PepenadorTabView: View {
 }
 
 struct EmpresaTabView: View {
+    @StateObject private var vm = EmpresaViewModel()
+
     var body: some View {
         TabView {
-            DashboardEmpresaView()
+            DashboardEmpresaView(vm: vm)
                 .tabItem { Label("Dashboard", systemImage: "chart.bar.fill") }
 
-            ScannerEmpresaView()
+            ScannerEmpresaView(vm: vm)
                 .tabItem { Label("Escanear", systemImage: "camera.viewfinder") }
 
-            AhorroFiscalView()
+            AhorroFiscalView(vm: vm)
                 .tabItem { Label("Ahorro Fiscal", systemImage: "dollarsign.circle.fill") }
 
-            ResumenLegalView()
+            ResumenLegalView(vm: vm)
                 .tabItem { Label("Legal", systemImage: "doc.text.fill") }
 
-            EquipoView()
+            EquipoView(vm: vm)
                 .tabItem { Label("Equipo", systemImage: "person.2.fill") }
         }
         .tint(Color(hex: "#1565C0"))

@@ -34,6 +34,7 @@
 		D8931ADC5D644941049E6DEA /* HistorialPepenadorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5D3088DC1E04C4521671DB0 /* HistorialPepenadorView.swift */; };
 		DA8E4E14DFA3751462A7BF9A /* CIRRCULOApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF244E56091B37877D476157 /* CIRRCULOApp.swift */; };
 		E75B03062A88A29337914D56 /* MockDataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F6E89E20120DB67E5C02AB6 /* MockDataService.swift */; };
+		F74C24173263E41EDB043D52 /* EmpresaViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 804F948071A6155AA94CE807 /* EmpresaViewModel.swift */; };
 		FBA6779DA457D2DD659E9B79 /* FoundationModelsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C58765472841866168B2243 /* FoundationModelsService.swift */; };
 /* End PBXBuildFile section */
 
@@ -54,6 +55,7 @@
 		6776AB8446A2C3E6D65BA802 /* ResumenLegalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResumenLegalView.swift; sourceTree = "<group>"; };
 		6DCCE3479D489138F78DA4E3 /* PanelContenedoresView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelContenedoresView.swift; sourceTree = "<group>"; };
 		7EAADF9B74FCCE78F77C1CA3 /* DashboardEmpresaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardEmpresaView.swift; sourceTree = "<group>"; };
+		804F948071A6155AA94CE807 /* EmpresaViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmpresaViewModel.swift; sourceTree = "<group>"; };
 		8F6E89E20120DB67E5C02AB6 /* MockDataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockDataService.swift; sourceTree = "<group>"; };
 		9B782945760014E9DFF3C3EE /* ScannerEmpresaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannerEmpresaView.swift; sourceTree = "<group>"; };
 		9C58765472841866168B2243 /* FoundationModelsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationModelsService.swift; sourceTree = "<group>"; };
@@ -80,6 +82,7 @@
 				F89AB97C4E9DC83C811DBA2A /* Resources */,
 				CAF1A4130189BE8A80FAD441 /* Services */,
 				2DDE8A189923517B6C0449D8 /* Utils */,
+				B3B4AEF38374D5004198F47C /* ViewModels */,
 				4FAB79E3C1590D9F4213BA64 /* Views */,
 			);
 			path = CIRRCULO;
@@ -169,6 +172,14 @@
 				58EEF74177627B3F7D92631C /* ProfileSelectorView.swift */,
 			);
 			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		B3B4AEF38374D5004198F47C /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				804F948071A6155AA94CE807 /* EmpresaViewModel.swift */,
+			);
+			path = ViewModels;
 			sourceTree = "<group>";
 		};
 		B9EB195663AF5C0085AA06C0 /* Models */ = {
@@ -298,6 +309,7 @@
 				B175DA0A0E43FE08D3380ABE /* DashboardEmpresaView.swift in Sources */,
 				A276A74E86C90774AB41F452 /* DepositView.swift in Sources */,
 				756D61D624DD5B371B0A7C56 /* DetallePuntoView.swift in Sources */,
+				F74C24173263E41EDB043D52 /* EmpresaViewModel.swift in Sources */,
 				D2F64226AA74D129D1476859 /* EntregaView.swift in Sources */,
 				060A332CF0BBE7E4B9007729 /* EquipoView.swift in Sources */,
 				FBA6779DA457D2DD659E9B79 /* FoundationModelsService.swift in Sources */,
