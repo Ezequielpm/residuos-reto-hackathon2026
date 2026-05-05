@@ -3,44 +3,47 @@ import AVFoundation
 
 struct ScannerView: View {
     @StateObject private var camera = CameraService()
-    @StateObject private var classifier = ClassifierService.shared
 
     @State private var resultado: ResultadoClasificacion?
+    @State private var instruccionesDinamicas: String?
+    @State private var pistAmbiguedad: String?
     @State private var materialesTicket: [TipoResiduo: Double] = [:]
     @State private var mostrarGuardado = false
-    @State private var instruccionesDinamicas: String?
+    @State private var clasificando = false
 
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                // Preview de cámara
+                // Preview cámara
                 CameraPreviewLayer(session: camera.captureSession)
                     .ignoresSafeArea()
 
                 // Overlay animado
                 ScannerOverlay()
 
-                // Panel de resultado
-                if let resultado {
-                    PanelResultado(
-                        resultado: resultado,
-                        instrucciones: instruccionesDinamicas,
-                        onGuardar: {
-                            guardarEnTicket(resultado)
-                        }
-                    )
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                } else {
-                    // Estado inicial
-                    VStack {
-                        Spacer()
-                        Text("Apunta la cámara a un residuo")
+                // Panel de resultado (abajo)
+                VStack {
+                    Spacer()
+                    if let resultado {
+                        PanelResultado(
+                            resultado: resultado,
+                            instrucciones: instruccionesDinamicas,
+                            pistaAmbiguedad: pistAmbiguedad,
+                            onGuardar: { guardarEnTicket(resultado) },
+                            onSeleccionManual: { tipo in
+                                aplicarSeleccionManual(tipo)
+                            }
+                        )
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    } else {
+                        Text(clasificando ? "Clasificando…" : "Apunta a un residuo")
                             .font(.headline)
                             .foregroundStyle(.white)
-                            .padding()
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
                             .background(.black.opacity(0.5))
                             .clipShape(Capsule())
-                            .padding(.bottom, 32)
+                            .padding(.bottom, 40)
                     }
                 }
             }
@@ -48,6 +51,15 @@ struct ScannerView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    if !materialesTicket.isEmpty {
+                        Label("\(materialesTicket.count)", systemImage: "bag.fill")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(Color(hex: "#4CAF50"))
+                    }
+                }
+            }
             .overlay(alignment: .top) {
                 if mostrarGuardado {
                     GuardadoBanner()
@@ -56,36 +68,60 @@ struct ScannerView: View {
                 }
             }
         }
-        .task {
-            await camera.solicitarPermiso()
-        }
+        .task { await camera.solicitarPermiso() }
         .onChange(of: camera.pixelBuffer) { _, buffer in
-            guard let buffer else { return }
+            guard let buffer, !clasificando else { return }
+            clasificando = true
             Task {
-                if let nuevoResultado = await ClassifierService.shared.clasificar(pixelBuffer: buffer) {
-                    withAnimation(.spring(response: 0.4)) {
-                        resultado = nuevoResultado
+                if let r = await ClassifierService.shared.clasificar(pixelBuffer: buffer) {
+                    await MainActor.run {
+                        withAnimation(.spring(response: 0.4)) { resultado = r }
+                        clasificando = false
                     }
-                    // Instrucciones dinámicas via Foundation Models (con fallback automático)
-                    instruccionesDinamicas = await FoundationModelsService.shared
-                        .instruccionesParaMaterial(nuevoResultado)
+                    // Instrucciones + pista ambigüedad via Foundation Models
+                    async let instrucciones = FoundationModelsService.shared.instruccionesParaMaterial(r)
+                    let ins = await instrucciones
+                    await MainActor.run { instruccionesDinamicas = ins }
+
+                    if r.esAmbiguo, let top2 = topDosOpciones(r) {
+                        let pista = await FoundationModelsService.shared
+                            .resolverAmbiguedad(opcion1: top2.0, opcion2: top2.1)
+                        await MainActor.run { pistAmbiguedad = pista }
+                    }
+                } else {
+                    await MainActor.run { clasificando = false }
                 }
             }
         }
     }
 
     private func guardarEnTicket(_ r: ResultadoClasificacion) {
-        // Kg estimados: 0.5 kg por defecto para el hackathon
         materialesTicket[r.tipo, default: 0] += 0.5
-        withAnimation {
-            mostrarGuardado = true
-        }
+        withAnimation { mostrarGuardado = true }
         Task {
             try? await Task.sleep(nanoseconds: 2_000_000_000)
-            await MainActor.run {
-                withAnimation { mostrarGuardado = false }
-            }
+            await MainActor.run { withAnimation { mostrarGuardado = false } }
         }
+    }
+
+    private func aplicarSeleccionManual(_ tipo: TipoResiduo) {
+        guard let r = resultado else { return }
+        let nuevo = ResultadoClasificacion(
+            tipo: tipo,
+            contenedor: tipo.contenedor,
+            confianza: 1.0,
+            proximaRecoleccion: r.proximaRecoleccion,
+            instrucciones: ClassifierService.instruccionesHardcodeadas[tipo] ?? "",
+            valorMercado: tipo.valorMercado
+        )
+        withAnimation { resultado = nuevo; pistAmbiguedad = nil }
+        guardarEnTicket(nuevo)
+    }
+
+    private func topDosOpciones(_ r: ResultadoClasificacion) -> (TipoResiduo, TipoResiduo)? {
+        let todos = TipoResiduo.allCases.filter { $0 != r.tipo }
+        guard let segundo = todos.first else { return nil }
+        return (r.tipo, segundo)
     }
 }
 
@@ -94,20 +130,18 @@ struct ScannerView: View {
 struct CameraPreviewLayer: UIViewRepresentable {
     let session: AVCaptureSession
 
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView(frame: .zero)
-        view.backgroundColor = .black
-        let layer = AVCaptureVideoPreviewLayer(session: session)
-        layer.videoGravity = .resizeAspectFill
-        layer.frame = UIScreen.main.bounds
-        view.layer.addSublayer(layer)
+    func makeUIView(context: Context) -> PreviewView {
+        let view = PreviewView()
+        view.previewLayer.session = session
+        view.previewLayer.videoGravity = .resizeAspectFill
         return view
     }
 
-    func updateUIView(_ uiView: UIView, context: Context) {
-        if let layer = uiView.layer.sublayers?.first as? AVCaptureVideoPreviewLayer {
-            layer.frame = uiView.bounds
-        }
+    func updateUIView(_ uiView: PreviewView, context: Context) {}
+
+    class PreviewView: UIView {
+        override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
+        var previewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
     }
 }
 
@@ -115,79 +149,69 @@ struct CameraPreviewLayer: UIViewRepresentable {
 
 struct ScannerOverlay: View {
     @State private var animando = false
+    private let boxSize: CGFloat = 220
 
     var body: some View {
         GeometryReader { geo in
-            let size: CGFloat = 220
-            let x = (geo.size.width - size) / 2
-            let y = geo.size.height * 0.25
+            let cx = geo.size.width / 2
+            let cy = geo.size.height * 0.33
 
             ZStack {
-                // Fondo oscuro excepto el cuadro
-                Color.black.opacity(0.35)
+                Color.black.opacity(0.4)
                     .ignoresSafeArea()
+                    .mask(
+                        Rectangle()
+                            .ignoresSafeArea()
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .frame(width: boxSize, height: boxSize)
+                                    .position(x: cx, y: cy)
+                                    .blendMode(.destinationOut)
+                            )
+                    )
 
-                // Cuadro transparente
-                RoundedRectangle(cornerRadius: 16)
-                    .blendMode(.destinationOut)
-                    .frame(width: size, height: size)
-                    .position(x: geo.size.width / 2, y: y + size / 2)
-
-                // Esquinas del cuadro
-                ScannerCorners(size: size)
-                    .position(x: geo.size.width / 2, y: y + size / 2)
-                    .foregroundStyle(.white)
+                // Esquinas
+                Group {
+                    CornerL().position(x: cx - boxSize/2 + 14, y: cy - boxSize/2 + 14)
+                    CornerL().rotationEffect(.degrees(90)).position(x: cx + boxSize/2 - 14, y: cy - boxSize/2 + 14)
+                    CornerL().rotationEffect(.degrees(180)).position(x: cx + boxSize/2 - 14, y: cy + boxSize/2 - 14)
+                    CornerL().rotationEffect(.degrees(270)).position(x: cx - boxSize/2 + 14, y: cy + boxSize/2 - 14)
+                }
+                .foregroundStyle(.white)
 
                 // Línea de escaneo
                 Rectangle()
-                    .fill(Color(hex: "#4CAF50").opacity(0.8))
-                    .frame(width: size - 20, height: 2)
+                    .fill(Color(hex: "#4CAF50").opacity(0.85))
+                    .frame(width: boxSize - 20, height: 2)
                     .clipShape(Capsule())
-                    .position(x: geo.size.width / 2,
-                              y: animando ? y + size - 10 : y + 10)
+                    .position(x: cx, y: animando ? cy + boxSize/2 - 10 : cy - boxSize/2 + 10)
                     .animation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true), value: animando)
             }
-            .compositingGroup()
         }
         .onAppear { animando = true }
     }
 }
 
-struct ScannerCorners: View {
-    let size: CGFloat
-    private let grosor: CGFloat = 3
-    private let largo: CGFloat = 24
-
+struct CornerL: View {
     var body: some View {
-        ZStack {
-            ForEach([(0, 0), (1, 0), (0, 1), (1, 1)], id: \.0) { hFlip, vFlip in
-                CornerShape()
-                    .stroke(lineWidth: grosor)
-                    .frame(width: largo, height: largo)
-                    .scaleEffect(x: hFlip == 0 ? 1 : -1, y: vFlip == 0 ? 1 : -1)
-                    .offset(x: hFlip == 0 ? -(size / 2 - largo / 2) : (size / 2 - largo / 2),
-                            y: vFlip == 0 ? -(size / 2 - largo / 2) : (size / 2 - largo / 2))
-            }
+        Path { p in
+            p.move(to: CGPoint(x: -14, y: 0))
+            p.addLine(to: CGPoint(x: 0, y: 0))
+            p.addLine(to: CGPoint(x: 0, y: 14))
         }
+        .stroke(lineWidth: 3)
+        .frame(width: 28, height: 28)
     }
 }
 
-struct CornerShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        var p = Path()
-        p.move(to: CGPoint(x: rect.minX, y: rect.maxY))
-        p.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
-        p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
-        return p
-    }
-}
-
-// MARK: - Panel Resultado
+// MARK: - Panel de Resultado
 
 struct PanelResultado: View {
     let resultado: ResultadoClasificacion
     let instrucciones: String?
+    let pistaAmbiguedad: String?
     let onGuardar: () -> Void
+    let onSeleccionManual: (TipoResiduo) -> Void
 
     private var colorContenedor: Color {
         switch resultado.contenedor {
@@ -197,46 +221,37 @@ struct PanelResultado: View {
         }
     }
 
-    private var colorConfianza: Color {
-        resultado.confianza >= 0.70 ? colorContenedor : Color(hex: "#F9A825")
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             // Barra de confianza
             Rectangle()
-                .fill(colorConfianza)
+                .fill(resultado.esAmbiguo ? Color(hex: "#F9A825") : colorContenedor)
                 .frame(height: 4)
 
-            VStack(spacing: 16) {
-                // Material y contenedor
-                HStack {
+            VStack(spacing: 14) {
+                // Material + contenedor
+                HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(resultado.tipo.rawValue)
                             .font(.title2.bold())
                         HStack(spacing: 6) {
-                            Circle()
-                                .fill(colorContenedor)
-                                .frame(width: 12, height: 12)
+                            Circle().fill(colorContenedor).frame(width: 10, height: 10)
                             Text("Contenedor \(resultado.contenedor.rawValue)")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .font(.subheadline).foregroundStyle(.secondary)
                         }
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 4) {
                         Text(resultado.proximaRecoleccion)
-                            .font(.caption.bold())
-                            .foregroundStyle(colorContenedor)
-                        Text("Próxima recolección")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .font(.caption.bold()).foregroundStyle(colorContenedor)
+                        Text("próxima recolección")
+                            .font(.caption2).foregroundStyle(.secondary)
                     }
                 }
 
-                // Instrucciones
-                if let instrucciones {
-                    Text(instrucciones)
+                // Instrucciones dinámicas
+                if let ins = instrucciones {
+                    Text(ins)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -245,17 +260,41 @@ struct PanelResultado: View {
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
 
-                // Ambigüedad
+                // Panel ambigüedad
                 if resultado.esAmbiguo {
-                    AmbiguedadView()
+                    VStack(alignment: .leading, spacing: 10) {
+                        if let pista = pistaAmbiguedad {
+                            HStack(alignment: .top, spacing: 8) {
+                                Image(systemName: "sparkles")
+                                    .foregroundStyle(Color(hex: "#F9A825"))
+                                Text(pista)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        HStack(spacing: 8) {
+                            AmbiguedadBoton(tipo: resultado.tipo,
+                                            onSelect: { onSeleccionManual(resultado.tipo) })
+
+                            let alternativo: TipoResiduo = resultado.tipo == .plasticoPET ? .plasticoHDPE : .carton
+                            AmbiguedadBoton(tipo: alternativo,
+                                            onSelect: { onSeleccionManual(alternativo) })
+                        }
+                    }
+                    .padding(12)
+                    .background(Color(hex: "#FFF8E1"))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(hex: "#F9A825").opacity(0.4)))
                 }
 
                 // Botón guardar
                 Button(action: onGuardar) {
-                    Label("Guardar escaneo", systemImage: "plus.circle.fill")
+                    Label("Guardar en ticket (+\(Int(0.5 * Double(resultado.tipo.puntosPorKg))) pts)",
+                          systemImage: "plus.circle.fill")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
+                        .padding(.vertical, 13)
                         .background(colorContenedor)
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -267,41 +306,31 @@ struct PanelResultado: View {
     }
 }
 
-struct AmbiguedadView: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Confianza baja — selecciona manualmente:", systemImage: "exclamationmark.triangle.fill")
-                .font(.caption.bold())
-                .foregroundStyle(Color(hex: "#F9A825"))
+struct AmbiguedadBoton: View {
+    let tipo: TipoResiduo
+    let onSelect: () -> Void
 
-            HStack(spacing: 8) {
-                ForEach([TipoResiduo.plasticoPET, .carton], id: \.self) { tipo in
-                    Button {
-                        // Selección manual
-                    } label: {
-                        Text(tipo.rawValue)
-                            .font(.caption)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(Color(.systemGray5))
-                            .clipShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
+    var body: some View {
+        Button(action: onSelect) {
+            Text(tipo.rawValue)
+                .font(.caption.bold())
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 9)
+                .background(Color(.systemGray5))
+                .foregroundStyle(.primary)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
         }
+        .buttonStyle(.plain)
     }
 }
 
-// MARK: - Banner guardado
+// MARK: - Banner Guardado
 
 struct GuardadoBanner: View {
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-            Text("Escaneo guardado en tu ticket")
-                .font(.subheadline.bold())
+            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+            Text("Guardado en tu ticket").font(.subheadline.bold())
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
