@@ -16,6 +16,7 @@
 		3492F912A7E2F7CD5C0AE62B /* PreciosMaterialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 463A9BF9B1F89F1CDEC4FEF5 /* PreciosMaterialView.swift */; };
 		39192B1AC7CB59C99E03C71D /* AsistenteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EE5122F9685AAEE71A758A1 /* AsistenteView.swift */; };
 		4E15DE5AABD76CEB31602969 /* QREstaticoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47B5B7240C566FD3F631C804 /* QREstaticoView.swift */; };
+		538C529CF74FC7ED0A54F325 /* LaunchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3D7D9189E1CB49293F08CAC /* LaunchView.swift */; };
 		54E515DED69A7CF6B1D196FD /* ProximaRecoleccion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 479CABA4DCCB6B93E40A3719 /* ProximaRecoleccion.swift */; };
 		6ABFBA179D57AD1E81378CB1 /* PerfilCiudadanoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DE3858FBA06A8ECB574B579 /* PerfilCiudadanoView.swift */; };
 		6CA4C894C39B75FE475D7A1C /* MapaAcopioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1D2AA3F2003859956BF3A6 /* MapaAcopioView.swift */; };
@@ -45,7 +46,7 @@
 		463A9BF9B1F89F1CDEC4FEF5 /* PreciosMaterialView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreciosMaterialView.swift; sourceTree = "<group>"; };
 		479CABA4DCCB6B93E40A3719 /* ProximaRecoleccion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProximaRecoleccion.swift; sourceTree = "<group>"; };
 		47B5B7240C566FD3F631C804 /* QREstaticoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QREstaticoView.swift; sourceTree = "<group>"; };
-		48E0B831C5EA4088BBC61F60 /* CIRRCULO.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CIRRCULO.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		48E0B831C5EA4088BBC61F60 /* CIRRCULO.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CIRRCULO.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		53A97DE18C7E3CC688A72FEE /* MapaRutasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapaRutasView.swift; sourceTree = "<group>"; };
 		56A676FF80563FB7404AAD40 /* DepositView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepositView.swift; sourceTree = "<group>"; };
 		58EEF74177627B3F7D92631C /* ProfileSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSelectorView.swift; sourceTree = "<group>"; };
@@ -58,6 +59,7 @@
 		9C58765472841866168B2243 /* FoundationModelsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationModelsService.swift; sourceTree = "<group>"; };
 		A9568D9BC034BA70663F5C80 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B35E28EB41339AB61A114B63 /* EntregaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntregaView.swift; sourceTree = "<group>"; };
+		B3D7D9189E1CB49293F08CAC /* LaunchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchView.swift; sourceTree = "<group>"; };
 		BC38B6890E57080D327AF428 /* DetallePuntoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetallePuntoView.swift; sourceTree = "<group>"; };
 		CD648102EC5C87B57BFC31B6 /* ClassifierService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassifierService.swift; sourceTree = "<group>"; };
 		D0A256E03B5D89FBF3CFAFAF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -163,6 +165,7 @@
 		775179DFD427FD372EEFA1B1 /* Onboarding */ = {
 			isa = PBXGroup;
 			children = (
+				B3D7D9189E1CB49293F08CAC /* LaunchView.swift */,
 				58EEF74177627B3F7D92631C /* ProfileSelectorView.swift */,
 			);
 			path = Onboarding;
@@ -245,6 +248,11 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					2A21E1010B003EFA2B985E54 = {
+						DevelopmentTeam = "";
+					};
+				};
 			};
 			buildConfigurationList = 26A2F2367A18F66AD3ED9F39 /* Build configuration list for PBXProject "CIRRCULO" */;
 			developmentRegion = en;
@@ -294,6 +302,7 @@
 				060A332CF0BBE7E4B9007729 /* EquipoView.swift in Sources */,
 				FBA6779DA457D2DD659E9B79 /* FoundationModelsService.swift in Sources */,
 				D8931ADC5D644941049E6DEA /* HistorialPepenadorView.swift in Sources */,
+				538C529CF74FC7ED0A54F325 /* LaunchView.swift in Sources */,
 				6CA4C894C39B75FE475D7A1C /* MapaAcopioView.swift in Sources */,
 				D3B3B1B0930E71CF06AEAE4D /* MapaRutasView.swift in Sources */,
 				E75B03062A88A29337914D56 /* MockDataService.swift in Sources */,
@@ -318,14 +327,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = 5TYGRWSCT7;
 				INFOPLIST_FILE = CIRRCULO/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = mx.enactus.cirrculo1;
+				PRODUCT_BUNDLE_IDENTIFIER = mx.enactus.cirrculo;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -395,14 +403,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = 5TYGRWSCT7;
 				INFOPLIST_FILE = CIRRCULO/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = mx.enactus.cirrculo1;
+				PRODUCT_BUNDLE_IDENTIFIER = mx.enactus.cirrculo;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";

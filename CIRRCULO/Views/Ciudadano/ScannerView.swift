@@ -10,6 +10,19 @@ struct ScannerView: View {
     @State private var materialesTicket: [TipoResiduo: Double] = [:]
     @State private var mostrarGuardado = false
     @State private var clasificando = false
+    @State private var mostrarModoDemo = false
+
+    // Objetos de demo para la presentación
+    private let objetosDemo: [(nombre: String, tipo: TipoResiduo, confianza: Float)] = [
+        ("Botella PET",        .plasticoPET,    0.94),
+        ("Lata de aluminio",   .aluminio,       0.97),
+        ("Caja de cartón",     .carton,         0.91),
+        ("Botella de vidrio",  .vidrio,         0.88),
+        ("Restos de comida",   .organicoComida, 0.93),
+        ("Envase HDPE",        .plasticoHDPE,   0.62), // ambiguo a propósito
+        ("Tetra Pak",          .tetraPak,       0.85),
+        ("Basura mixta",       .noReciclable,   0.96),
+    ]
 
     var body: some View {
         NavigationStack {
@@ -21,29 +34,30 @@ struct ScannerView: View {
                 // Overlay animado
                 ScannerOverlay()
 
-                // Panel de resultado (abajo)
-                VStack {
-                    Spacer()
-                    if let resultado {
-                        PanelResultado(
-                            resultado: resultado,
-                            instrucciones: instruccionesDinamicas,
-                            pistaAmbiguedad: pistAmbiguedad,
-                            onGuardar: { guardarEnTicket(resultado) },
-                            onSeleccionManual: { tipo in
-                                aplicarSeleccionManual(tipo)
+                // Panel demo (si está activo)
+                if mostrarModoDemo {
+                    PanelModoDemo(objetos: objetosDemo) { obj in
+                        mostrarModoDemo = false
+                        simularClasificacion(nombre: obj.nombre, tipo: obj.tipo, confianza: obj.confianza)
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else {
+                    VStack {
+                        Spacer()
+                        if let resultado {
+                            PanelResultado(
+                                resultado: resultado,
+                                instrucciones: instruccionesDinamicas,
+                                pistaAmbiguedad: pistAmbiguedad,
+                                onGuardar: { guardarEnTicket(resultado) },
+                                onSeleccionManual: { tipo in aplicarSeleccionManual(tipo) }
+                            )
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        } else {
+                            HintEscaneo(clasificando: clasificando) {
+                                withAnimation { mostrarModoDemo = true }
                             }
-                        )
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                    } else {
-                        Text(clasificando ? "Clasificando…" : "Apunta a un residuo")
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                            .background(.black.opacity(0.5))
-                            .clipShape(Capsule())
-                            .padding(.bottom, 40)
+                        }
                     }
                 }
             }
@@ -52,11 +66,30 @@ struct ScannerView: View {
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    if mostrarModoDemo {
+                        Button("Cancelar") {
+                            withAnimation { mostrarModoDemo = false }
+                        }
+                        .foregroundStyle(.white)
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
-                    if !materialesTicket.isEmpty {
-                        Label("\(materialesTicket.count)", systemImage: "bag.fill")
-                            .font(.subheadline.bold())
-                            .foregroundStyle(Color(hex: "#4CAF50"))
+                    HStack(spacing: 12) {
+                        if !materialesTicket.isEmpty {
+                            Label("\(materialesTicket.count)", systemImage: "bag.fill")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(Color(hex: "#4CAF50"))
+                        }
+                        if !mostrarModoDemo {
+                            Button {
+                                withAnimation { mostrarModoDemo = true }
+                            } label: {
+                                Label("Demo", systemImage: "play.circle.fill")
+                                    .font(.subheadline)
+                                    .foregroundStyle(Color(hex: "#F9A825"))
+                            }
+                        }
                     }
                 }
             }
@@ -70,7 +103,7 @@ struct ScannerView: View {
         }
         .task { await camera.solicitarPermiso() }
         .onChange(of: camera.pixelBuffer) { _, buffer in
-            guard let buffer, !clasificando else { return }
+            guard let buffer, !clasificando, !mostrarModoDemo else { return }
             clasificando = true
             Task {
                 if let r = await ClassifierService.shared.clasificar(pixelBuffer: buffer) {
@@ -78,9 +111,7 @@ struct ScannerView: View {
                         withAnimation(.spring(response: 0.4)) { resultado = r }
                         clasificando = false
                     }
-                    // Instrucciones + pista ambigüedad via Foundation Models
-                    async let instrucciones = FoundationModelsService.shared.instruccionesParaMaterial(r)
-                    let ins = await instrucciones
+                    let ins = await FoundationModelsService.shared.instruccionesParaMaterial(r)
                     await MainActor.run { instruccionesDinamicas = ins }
 
                     if r.esAmbiguo, let top2 = topDosOpciones(r) {
@@ -91,6 +122,31 @@ struct ScannerView: View {
                 } else {
                     await MainActor.run { clasificando = false }
                 }
+            }
+        }
+    }
+
+    // MARK: - Acciones
+
+    private func simularClasificacion(nombre: String, tipo: TipoResiduo, confianza: Float) {
+        let contenedor = tipo.contenedor
+        let r = ResultadoClasificacion(
+            tipo: tipo,
+            contenedor: contenedor,
+            confianza: confianza,
+            proximaRecoleccion: proximaRecoleccionTexto(para: contenedor),
+            instrucciones: ClassifierService.instruccionesHardcodeadas[tipo] ?? "",
+            valorMercado: tipo.valorMercado
+        )
+        withAnimation(.spring(response: 0.4)) { resultado = r }
+
+        Task {
+            let ins = await FoundationModelsService.shared.instruccionesParaMaterial(r)
+            await MainActor.run { instruccionesDinamicas = ins }
+            if r.esAmbiguo, let top2 = topDosOpciones(r) {
+                let pista = await FoundationModelsService.shared
+                    .resolverAmbiguedad(opcion1: top2.0, opcion2: top2.1)
+                await MainActor.run { pistAmbiguedad = pista }
             }
         }
     }
@@ -107,9 +163,7 @@ struct ScannerView: View {
     private func aplicarSeleccionManual(_ tipo: TipoResiduo) {
         guard let r = resultado else { return }
         let nuevo = ResultadoClasificacion(
-            tipo: tipo,
-            contenedor: tipo.contenedor,
-            confianza: 1.0,
+            tipo: tipo, contenedor: tipo.contenedor, confianza: 1.0,
             proximaRecoleccion: r.proximaRecoleccion,
             instrucciones: ClassifierService.instruccionesHardcodeadas[tipo] ?? "",
             valorMercado: tipo.valorMercado
@@ -119,9 +173,121 @@ struct ScannerView: View {
     }
 
     private func topDosOpciones(_ r: ResultadoClasificacion) -> (TipoResiduo, TipoResiduo)? {
-        let todos = TipoResiduo.allCases.filter { $0 != r.tipo }
-        guard let segundo = todos.first else { return nil }
+        let otros = TipoResiduo.allCases.filter { $0 != r.tipo }
+        guard let segundo = otros.first else { return nil }
         return (r.tipo, segundo)
+    }
+}
+
+// MARK: - Hint inicial
+
+struct HintEscaneo: View {
+    let clasificando: Bool
+    let onDemo: () -> Void
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Text(clasificando ? "Clasificando…" : "Apunta a un residuo")
+                .font(.headline)
+                .foregroundStyle(.white)
+
+            Button(action: onDemo) {
+                Label("Modo Demo", systemImage: "play.circle.fill")
+                    .font(.caption.bold())
+                    .foregroundStyle(Color(hex: "#F9A825"))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 7)
+                    .background(Color.black.opacity(0.4))
+                    .clipShape(Capsule())
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+        .background(.black.opacity(0.5))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .padding(.bottom, 36)
+    }
+}
+
+// MARK: - Panel Modo Demo
+
+struct PanelModoDemo: View {
+    let objetos: [(nombre: String, tipo: TipoResiduo, confianza: Float)]
+    let onSeleccionar: ((nombre: String, tipo: TipoResiduo, confianza: Float)) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Handle
+            Capsule()
+                .fill(Color(.systemGray4))
+                .frame(width: 36, height: 4)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 10)
+
+            Text("Selecciona un objeto para la demo")
+                .font(.headline)
+                .padding(.horizontal)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
+
+            ScrollView {
+                VStack(spacing: 6) {
+                    ForEach(objetos, id: \.nombre) { obj in
+                        Button { onSeleccionar(obj) } label: {
+                            HStack(spacing: 14) {
+                                // Color del contenedor
+                                Circle()
+                                    .fill(colorContenedor(obj.tipo.contenedor))
+                                    .frame(width: 14, height: 14)
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(obj.nombre)
+                                        .font(.subheadline.bold())
+                                        .foregroundStyle(.primary)
+                                    Text(obj.tipo.rawValue)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Spacer()
+
+                                // Confianza
+                                Text(obj.confianza < 0.70 ? "⚠ Ambiguo" : "\(Int(obj.confianza * 100))%")
+                                    .font(.caption.bold())
+                                    .foregroundStyle(obj.confianza < 0.70
+                                                     ? Color(hex: "#F9A825")
+                                                     : Color(hex: "#388E3C"))
+
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .padding(.horizontal)
+                            .padding(.vertical, 12)
+                            .background(Color(.systemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 20)
+            }
+            .frame(maxHeight: 380)
+        }
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .shadow(color: .black.opacity(0.15), radius: 20)
+        .padding(.horizontal, 8)
+        .padding(.bottom, 8)
+    }
+
+    private func colorContenedor(_ c: ContenedorNADF) -> Color {
+        switch c {
+        case .verde:   return Color(hex: "#4CAF50")
+        case .gris:    return Color(hex: "#607D8B")
+        case .naranja: return Color(hex: "#FF5722")
+        }
     }
 }
 
@@ -170,7 +336,6 @@ struct ScannerOverlay: View {
                             )
                     )
 
-                // Esquinas
                 Group {
                     CornerL().position(x: cx - boxSize/2 + 14, y: cy - boxSize/2 + 14)
                     CornerL().rotationEffect(.degrees(90)).position(x: cx + boxSize/2 - 14, y: cy - boxSize/2 + 14)
@@ -179,7 +344,6 @@ struct ScannerOverlay: View {
                 }
                 .foregroundStyle(.white)
 
-                // Línea de escaneo
                 Rectangle()
                     .fill(Color(hex: "#4CAF50").opacity(0.85))
                     .frame(width: boxSize - 20, height: 2)
@@ -204,7 +368,7 @@ struct CornerL: View {
     }
 }
 
-// MARK: - Panel de Resultado
+// MARK: - Panel Resultado
 
 struct PanelResultado: View {
     let resultado: ResultadoClasificacion
@@ -223,13 +387,11 @@ struct PanelResultado: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Barra de confianza
             Rectangle()
                 .fill(resultado.esAmbiguo ? Color(hex: "#F9A825") : colorContenedor)
                 .frame(height: 4)
 
             VStack(spacing: 14) {
-                // Material + contenedor
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(resultado.tipo.rawValue)
@@ -249,34 +411,41 @@ struct PanelResultado: View {
                     }
                 }
 
-                // Instrucciones dinámicas
                 if let ins = instrucciones {
-                    Text(ins)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(10)
-                        .background(Color(.systemGray6))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "info.circle.fill")
+                            .foregroundStyle(colorContenedor)
+                            .font(.caption)
+                        Text(ins)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(colorContenedor.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
 
-                // Panel ambigüedad
                 if resultado.esAmbiguo {
                     VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(Color(hex: "#F9A825"))
+                                .font(.caption)
+                            Text("Confianza baja — selecciona manualmente")
+                                .font(.caption.bold())
+                                .foregroundStyle(Color(hex: "#F9A825"))
+                        }
+
                         if let pista = pistaAmbiguedad {
-                            HStack(alignment: .top, spacing: 8) {
-                                Image(systemName: "sparkles")
-                                    .foregroundStyle(Color(hex: "#F9A825"))
-                                Text(pista)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
+                            Text(pista)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
 
                         HStack(spacing: 8) {
                             AmbiguedadBoton(tipo: resultado.tipo,
                                             onSelect: { onSeleccionManual(resultado.tipo) })
-
                             let alternativo: TipoResiduo = resultado.tipo == .plasticoPET ? .plasticoHDPE : .carton
                             AmbiguedadBoton(tipo: alternativo,
                                             onSelect: { onSeleccionManual(alternativo) })
@@ -288,7 +457,6 @@ struct PanelResultado: View {
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(hex: "#F9A825").opacity(0.4)))
                 }
 
-                // Botón guardar
                 Button(action: onGuardar) {
                     Label("Guardar en ticket (+\(Int(0.5 * Double(resultado.tipo.puntosPorKg))) pts)",
                           systemImage: "plus.circle.fill")
