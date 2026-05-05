@@ -2,6 +2,7 @@ import SwiftUI
 
 struct EquipoView: View {
     @ObservedObject var vm: EmpresaViewModel
+    var onCambiarPerfil: (() -> Void)? = nil
     @State private var mostrandoAgregar = false
     @State private var nuevoNombre = ""
 
@@ -29,6 +30,17 @@ struct EquipoView: View {
             .navigationTitle("Equipo")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    if let onCambiarPerfil {
+                        Button(action: onCambiarPerfil) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.2.circlepath")
+                                Text("Cambiar perfil")
+                            }
+                            .font(.caption.bold())
+                        }
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { mostrandoAgregar = true } label: {
                         Image(systemName: "person.badge.plus")

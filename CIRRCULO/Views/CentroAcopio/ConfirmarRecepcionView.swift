@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ConfirmarRecepcionView: View {
+    var onCambiarPerfil: (() -> Void)? = nil
     @State private var recepciones = recepcionesEjemplo
     @State private var confirmadas: Set<UUID> = []
 
@@ -25,7 +26,8 @@ struct ConfirmarRecepcionView: View {
                     RecepcionesHeader(
                         pendientesCount: pendientes.count,
                         confirmadasCount: yaConfirmadas.count,
-                        totalHoy: totalHoy
+                        totalHoy: totalHoy,
+                        onCambiarPerfil: onCambiarPerfil
                     )
 
                     VStack(spacing: 20) {
@@ -94,6 +96,7 @@ struct RecepcionesHeader: View {
     let pendientesCount: Int
     let confirmadasCount: Int
     let totalHoy: Double
+    var onCambiarPerfil: (() -> Void)? = nil
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -115,9 +118,24 @@ struct RecepcionesHeader: View {
                             .foregroundStyle(.white.opacity(0.75))
                     }
                     Spacer()
-                    Image(systemName: "shippingbox.circle.fill")
-                        .font(.system(size: 36))
-                        .foregroundStyle(.white.opacity(0.3))
+                    VStack(spacing: 8) {
+                        Image(systemName: "shippingbox.circle.fill")
+                            .font(.system(size: 36))
+                            .foregroundStyle(.white.opacity(0.3))
+                        if let onCambiarPerfil {
+                            Button(action: onCambiarPerfil) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "arrow.2.circlepath").font(.caption2.bold())
+                                    Text("Cambiar").font(.caption2.bold())
+                                }
+                                .foregroundStyle(.white.opacity(0.9))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(.white.opacity(0.15))
+                                .clipShape(Capsule())
+                            }
+                        }
+                    }
                 }
 
                 HStack(spacing: 0) {

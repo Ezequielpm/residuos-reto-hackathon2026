@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct HistorialPepenadorView: View {
+    var onCambiarPerfil: (() -> Void)? = nil
     @State private var recolecciones = historialEjemplo
 
     private var totalMes: Double { recolecciones.reduce(0) { $0 + $1.ingresos } }
@@ -11,7 +12,7 @@ struct HistorialPepenadorView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     // Header
-                    HistorialPepenadorHeader(totalMes: totalMes, viajes: recolecciones.count, totalKg: totalKg)
+                    HistorialPepenadorHeader(totalMes: totalMes, viajes: recolecciones.count, totalKg: totalKg, onCambiarPerfil: onCambiarPerfil)
 
                     VStack(spacing: 0) {
                         // Lista
@@ -40,6 +41,7 @@ struct HistorialPepenadorHeader: View {
     let totalMes: Double
     let viajes: Int
     let totalKg: Double
+    var onCambiarPerfil: (() -> Void)? = nil
     @State private var animado = false
 
     var body: some View {
@@ -62,9 +64,24 @@ struct HistorialPepenadorHeader: View {
                             .foregroundStyle(.white.opacity(0.75))
                     }
                     Spacer()
-                    Image(systemName: "bicycle.circle.fill")
-                        .font(.system(size: 36))
-                        .foregroundStyle(.white.opacity(0.3))
+                    VStack(spacing: 8) {
+                        Image(systemName: "bicycle.circle.fill")
+                            .font(.system(size: 36))
+                            .foregroundStyle(.white.opacity(0.3))
+                        if let onCambiarPerfil {
+                            Button(action: onCambiarPerfil) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "arrow.2.circlepath").font(.caption2.bold())
+                                    Text("Cambiar").font(.caption2.bold())
+                                }
+                                .foregroundStyle(.white.opacity(0.9))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(.white.opacity(0.15))
+                                .clipShape(Capsule())
+                            }
+                        }
+                    }
                 }
 
                 // Ingresos

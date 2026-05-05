@@ -205,18 +205,20 @@ struct PerfilCard: View {
 // MARK: - Tab Views
 
 struct CiudadanoTabView: View {
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
         TabView {
-            ScannerView()
-                .tabItem { Label("Escanear", systemImage: "camera.viewfinder") }
-            AsistenteView()
-                .tabItem { Label("Asistente", systemImage: "sparkles") }
-            DepositView()
-                .tabItem { Label("Depositar", systemImage: "qrcode.viewfinder") }
+            PerfilCiudadanoView(onCambiarPerfil: { dismiss() })
+                .tabItem { Label("Perfil", systemImage: "person.circle.fill") }
             MapaAcopioView()
                 .tabItem { Label("Mapa", systemImage: "map.fill") }
-            PerfilCiudadanoView()
-                .tabItem { Label("Perfil", systemImage: "person.circle.fill") }
+            ScannerView()
+                .tabItem { Label("Escanear", systemImage: "camera.viewfinder") }
+            DepositView()
+                .tabItem { Label("Depositar", systemImage: "qrcode.viewfinder") }
+            AsistenteView()
+                .tabItem { Label("Asistente", systemImage: "sparkles") }
         }
         .tint(Color(hex: "#2E7D32"))
         .navigationBarHidden(true)
@@ -224,13 +226,15 @@ struct CiudadanoTabView: View {
 }
 
 struct PepenadorTabView: View {
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
         TabView {
             MapaRutasView()
                 .tabItem { Label("Mapa", systemImage: "map.fill") }
             EntregaView()
                 .tabItem { Label("Entregar", systemImage: "checkmark.circle.fill") }
-            HistorialPepenadorView()
+            HistorialPepenadorView(onCambiarPerfil: { dismiss() })
                 .tabItem { Label("Historial", systemImage: "list.bullet.rectangle") }
         }
         .tint(Color(hex: "#E65100"))
@@ -240,6 +244,7 @@ struct PepenadorTabView: View {
 
 struct EmpresaTabView: View {
     @StateObject private var vm = EmpresaViewModel()
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         TabView {
@@ -251,7 +256,7 @@ struct EmpresaTabView: View {
                 .tabItem { Label("Ahorro Fiscal", systemImage: "dollarsign.circle.fill") }
             ResumenLegalView(vm: vm)
                 .tabItem { Label("Legal", systemImage: "doc.text.fill") }
-            EquipoView(vm: vm)
+            EquipoView(vm: vm, onCambiarPerfil: { dismiss() })
                 .tabItem { Label("Equipo", systemImage: "person.2.fill") }
         }
         .tint(Color(hex: "#1565C0"))
@@ -260,9 +265,11 @@ struct EmpresaTabView: View {
 }
 
 struct PuntoAcopioTabView: View {
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
         TabView {
-            PanelContenedoresView()
+            PanelContenedoresView(onCambiarPerfil: { dismiss() })
                 .tabItem { Label("Panel", systemImage: "trash.fill") }
             QREstaticoView()
                 .tabItem { Label("Mi QR", systemImage: "qrcode") }
@@ -273,9 +280,11 @@ struct PuntoAcopioTabView: View {
 }
 
 struct CentroAcopioTabView: View {
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
         TabView {
-            ConfirmarRecepcionView()
+            ConfirmarRecepcionView(onCambiarPerfil: { dismiss() })
                 .tabItem { Label("Recepciones", systemImage: "shippingbox.fill") }
             PreciosMaterialView()
                 .tabItem { Label("Precios", systemImage: "tag.fill") }

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct PerfilCiudadanoView: View {
+    var onCambiarPerfil: (() -> Void)? = nil
     @State private var historial = MockDataService.shared.historialDepositos
     @State private var cupones = MockDataService.shared.cupones
 
@@ -13,7 +14,7 @@ struct PerfilCiudadanoView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     // Header con gradiente
-                    HeaderPerfil(puntos: totalPuntos, kg: totalKg, co2: co2Evitado)
+                    HeaderPerfil(puntos: totalPuntos, kg: totalKg, co2: co2Evitado, onCambiarPerfil: onCambiarPerfil)
 
                     VStack(spacing: 20) {
                         // Cupones
@@ -56,6 +57,7 @@ struct HeaderPerfil: View {
     let puntos: Int
     let kg: Double
     let co2: Double
+    var onCambiarPerfil: (() -> Void)? = nil
     @State private var animado = false
 
     var body: some View {
@@ -70,6 +72,26 @@ struct HeaderPerfil: View {
             Circle().fill(.white.opacity(0.04)).frame(width: 160).offset(x: -80, y: 20)
 
             VStack(spacing: 20) {
+                // Botón cambiar perfil
+                HStack {
+                    Spacer()
+                    if let onCambiarPerfil {
+                        Button(action: onCambiarPerfil) {
+                            HStack(spacing: 5) {
+                                Image(systemName: "arrow.2.circlepath")
+                                    .font(.caption.bold())
+                                Text("Cambiar perfil")
+                                    .font(.caption.bold())
+                            }
+                            .foregroundStyle(.white.opacity(0.9))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .background(.white.opacity(0.15))
+                            .clipShape(Capsule())
+                        }
+                    }
+                }
+
                 // Avatar
                 ZStack {
                     Circle().fill(.white.opacity(0.15)).frame(width: 72, height: 72)

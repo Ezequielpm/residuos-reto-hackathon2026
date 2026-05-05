@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct PanelContenedoresView: View {
+    var onCambiarPerfil: (() -> Void)? = nil
     @State private var punto = MockDataService.shared.puntosAcopio[0]
     @State private var solicitudEnviada = false
     @State private var animado = false
@@ -18,7 +19,7 @@ struct PanelContenedoresView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     // Header
-                    PanelContenedoresHeader(punto: punto)
+                    PanelContenedoresHeader(punto: punto, onCambiarPerfil: onCambiarPerfil)
 
                     VStack(spacing: 20) {
                         // Contenedores
@@ -121,6 +122,7 @@ struct PanelContenedoresView: View {
 
 struct PanelContenedoresHeader: View {
     let punto: PuntoAcopio
+    var onCambiarPerfil: (() -> Void)? = nil
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -142,9 +144,24 @@ struct PanelContenedoresHeader: View {
                             .foregroundStyle(.white.opacity(0.75))
                     }
                     Spacer()
-                    Image(systemName: "mappin.circle.fill")
-                        .font(.system(size: 36))
-                        .foregroundStyle(.white.opacity(0.3))
+                    VStack(spacing: 8) {
+                        Image(systemName: "mappin.circle.fill")
+                            .font(.system(size: 36))
+                            .foregroundStyle(.white.opacity(0.3))
+                        if let onCambiarPerfil {
+                            Button(action: onCambiarPerfil) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "arrow.2.circlepath").font(.caption2.bold())
+                                    Text("Cambiar").font(.caption2.bold())
+                                }
+                                .foregroundStyle(.white.opacity(0.9))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(.white.opacity(0.15))
+                                .clipShape(Capsule())
+                            }
+                        }
+                    }
                 }
 
                 HStack(spacing: 0) {
