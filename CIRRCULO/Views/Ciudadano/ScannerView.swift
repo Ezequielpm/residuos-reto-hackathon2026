@@ -10,54 +10,35 @@ struct ScannerView: View {
     @State private var materialesTicket: [TipoResiduo: Double] = [:]
     @State private var mostrarGuardado = false
     @State private var clasificando = false
-    @State private var mostrarModoDemo = false
-
-    // Objetos de demo para la presentación
-    private let objetosDemo: [(nombre: String, tipo: TipoResiduo, confianza: Float)] = [
-        ("Botella PET",        .plasticoPET,    0.94),
-        ("Lata de aluminio",   .aluminio,       0.97),
-        ("Caja de cartón",     .carton,         0.91),
-        ("Botella de vidrio",  .vidrio,         0.88),
-        ("Restos de comida",   .organicoComida, 0.93),
-        ("Envase HDPE",        .plasticoHDPE,   0.62), // ambiguo a propósito
-        ("Tetra Pak",          .tetraPak,       0.85),
-        ("Basura mixta",       .noReciclable,   0.96),
-    ]
 
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                // Preview cámara
                 CameraPreviewLayer(session: camera.captureSession)
                     .ignoresSafeArea()
 
-                // Overlay animado
                 ScannerOverlay()
 
-                // Panel demo (si está activo)
-                if mostrarModoDemo {
-                    PanelModoDemo(objetos: objetosDemo) { obj in
-                        mostrarModoDemo = false
-                        simularClasificacion(nombre: obj.nombre, tipo: obj.tipo, confianza: obj.confianza)
-                    }
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                } else {
-                    VStack {
-                        Spacer()
-                        if let resultado {
-                            PanelResultado(
-                                resultado: resultado,
-                                instrucciones: instruccionesDinamicas,
-                                pistaAmbiguedad: pistAmbiguedad,
-                                onGuardar: { guardarEnTicket(resultado) },
-                                onSeleccionManual: { tipo in aplicarSeleccionManual(tipo) }
-                            )
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                        } else {
-                            HintEscaneo(clasificando: clasificando) {
-                                withAnimation { mostrarModoDemo = true }
-                            }
-                        }
+                VStack {
+                    Spacer()
+                    if let resultado {
+                        PanelResultado(
+                            resultado: resultado,
+                            instrucciones: instruccionesDinamicas,
+                            pistaAmbiguedad: pistAmbiguedad,
+                            onGuardar: { guardarEnTicket(resultado) },
+                            onSeleccionManual: { tipo in aplicarSeleccionManual(tipo) }
+                        )
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    } else {
+                        Text(clasificando ? "Clasificando…" : "Apunta a un residuo")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(.black.opacity(0.5))
+                            .clipShape(Capsule())
+                            .padding(.bottom, 40)
                     }
                 }
             }
@@ -66,30 +47,11 @@ struct ScannerView: View {
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    if mostrarModoDemo {
-                        Button("Cancelar") {
-                            withAnimation { mostrarModoDemo = false }
-                        }
-                        .foregroundStyle(.white)
-                    }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 12) {
-                        if !materialesTicket.isEmpty {
-                            Label("\(materialesTicket.count)", systemImage: "bag.fill")
-                                .font(.subheadline.bold())
-                                .foregroundStyle(Color(hex: "#4CAF50"))
-                        }
-                        if !mostrarModoDemo {
-                            Button {
-                                withAnimation { mostrarModoDemo = true }
-                            } label: {
-                                Label("Demo", systemImage: "play.circle.fill")
-                                    .font(.subheadline)
-                                    .foregroundStyle(Color(hex: "#F9A825"))
-                            }
-                        }
+                    if !materialesTicket.isEmpty {
+                        Label("\(materialesTicket.count)", systemImage: "bag.fill")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(Color(hex: "#4CAF50"))
                     }
                 }
             }
@@ -103,7 +65,7 @@ struct ScannerView: View {
         }
         .task { await camera.solicitarPermiso() }
         .onChange(of: camera.pixelBuffer) { _, buffer in
-            guard let buffer, !clasificando, !mostrarModoDemo else { return }
+            guard let buffer, !clasificando else { return }
             clasificando = true
             Task {
                 if let r = await ClassifierService.shared.clasificar(pixelBuffer: buffer) {
@@ -122,31 +84,6 @@ struct ScannerView: View {
                 } else {
                     await MainActor.run { clasificando = false }
                 }
-            }
-        }
-    }
-
-    // MARK: - Acciones
-
-    private func simularClasificacion(nombre: String, tipo: TipoResiduo, confianza: Float) {
-        let contenedor = tipo.contenedor
-        let r = ResultadoClasificacion(
-            tipo: tipo,
-            contenedor: contenedor,
-            confianza: confianza,
-            proximaRecoleccion: proximaRecoleccionTexto(para: contenedor),
-            instrucciones: ClassifierService.instruccionesHardcodeadas[tipo] ?? "",
-            valorMercado: tipo.valorMercado
-        )
-        withAnimation(.spring(response: 0.4)) { resultado = r }
-
-        Task {
-            let ins = await FoundationModelsService.shared.instruccionesParaMaterial(r)
-            await MainActor.run { instruccionesDinamicas = ins }
-            if r.esAmbiguo, let top2 = topDosOpciones(r) {
-                let pista = await FoundationModelsService.shared
-                    .resolverAmbiguedad(opcion1: top2.0, opcion2: top2.1)
-                await MainActor.run { pistAmbiguedad = pista }
             }
         }
     }
@@ -176,118 +113,6 @@ struct ScannerView: View {
         let otros = TipoResiduo.allCases.filter { $0 != r.tipo }
         guard let segundo = otros.first else { return nil }
         return (r.tipo, segundo)
-    }
-}
-
-// MARK: - Hint inicial
-
-struct HintEscaneo: View {
-    let clasificando: Bool
-    let onDemo: () -> Void
-
-    var body: some View {
-        VStack(spacing: 10) {
-            Text(clasificando ? "Clasificando…" : "Apunta a un residuo")
-                .font(.headline)
-                .foregroundStyle(.white)
-
-            Button(action: onDemo) {
-                Label("Modo Demo", systemImage: "play.circle.fill")
-                    .font(.caption.bold())
-                    .foregroundStyle(Color(hex: "#F9A825"))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 7)
-                    .background(Color.black.opacity(0.4))
-                    .clipShape(Capsule())
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
-        .background(.black.opacity(0.5))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .padding(.bottom, 36)
-    }
-}
-
-// MARK: - Panel Modo Demo
-
-struct PanelModoDemo: View {
-    let objetos: [(nombre: String, tipo: TipoResiduo, confianza: Float)]
-    let onSeleccionar: ((nombre: String, tipo: TipoResiduo, confianza: Float)) -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Handle
-            Capsule()
-                .fill(Color(.systemGray4))
-                .frame(width: 36, height: 4)
-                .frame(maxWidth: .infinity)
-                .padding(.top, 10)
-
-            Text("Selecciona un objeto para la demo")
-                .font(.headline)
-                .padding(.horizontal)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
-
-            ScrollView {
-                VStack(spacing: 6) {
-                    ForEach(objetos, id: \.nombre) { obj in
-                        Button { onSeleccionar(obj) } label: {
-                            HStack(spacing: 14) {
-                                // Color del contenedor
-                                Circle()
-                                    .fill(colorContenedor(obj.tipo.contenedor))
-                                    .frame(width: 14, height: 14)
-
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(obj.nombre)
-                                        .font(.subheadline.bold())
-                                        .foregroundStyle(.primary)
-                                    Text(obj.tipo.rawValue)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-
-                                Spacer()
-
-                                // Confianza
-                                Text(obj.confianza < 0.70 ? "⚠ Ambiguo" : "\(Int(obj.confianza * 100))%")
-                                    .font(.caption.bold())
-                                    .foregroundStyle(obj.confianza < 0.70
-                                                     ? Color(hex: "#F9A825")
-                                                     : Color(hex: "#388E3C"))
-
-                                Image(systemName: "chevron.right")
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
-                            }
-                            .padding(.horizontal)
-                            .padding(.vertical, 12)
-                            .background(Color(.systemBackground))
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal)
-                .padding(.bottom, 20)
-            }
-            .frame(maxHeight: 380)
-        }
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 24))
-        .shadow(color: .black.opacity(0.15), radius: 20)
-        .padding(.horizontal, 8)
-        .padding(.bottom, 8)
-    }
-
-    private func colorContenedor(_ c: ContenedorNADF) -> Color {
-        switch c {
-        case .verde:   return Color(hex: "#4CAF50")
-        case .gris:    return Color(hex: "#607D8B")
-        case .naranja: return Color(hex: "#FF5722")
-        }
     }
 }
 
