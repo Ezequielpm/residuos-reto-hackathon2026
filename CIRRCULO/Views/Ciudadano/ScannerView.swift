@@ -10,6 +10,7 @@ struct ScannerView: View {
     @State private var materialesTicket: [TipoResiduo: Double] = [:]
     @State private var mostrarGuardado = false
     @State private var clasificando = false
+    @State private var ptsGuardados = 0
 
     var body: some View {
         NavigationStack {
@@ -31,7 +32,7 @@ struct ScannerView: View {
                         )
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                     } else {
-                        Text(clasificando ? "Clasificando…" : "Apunta a un residuo")
+                        Text(clasificando ? "Analizando..." : "Apunta a cualquier residuo")
                             .font(.headline)
                             .foregroundStyle(.white)
                             .padding(.horizontal, 20)
@@ -57,7 +58,7 @@ struct ScannerView: View {
             }
             .overlay(alignment: .top) {
                 if mostrarGuardado {
-                    GuardadoBanner()
+                    GuardadoBanner(pts: ptsGuardados)
                         .transition(.move(edge: .top).combined(with: .opacity))
                         .zIndex(1)
                 }
@@ -89,6 +90,8 @@ struct ScannerView: View {
     }
 
     private func guardarEnTicket(_ r: ResultadoClasificacion) {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        ptsGuardados = Int(0.5 * Double(r.tipo.puntosPorKg))
         materialesTicket[r.tipo, default: 0] += 0.5
         withAnimation { mostrarGuardado = true }
         Task {
@@ -320,10 +323,13 @@ struct AmbiguedadBoton: View {
 // MARK: - Banner Guardado
 
 struct GuardadoBanner: View {
+    let pts: Int
+
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-            Text("Guardado en tu ticket").font(.subheadline.bold())
+            Text(pts > 0 ? "+\(pts) pts guardados" : "Guardado en tu ticket")
+                .font(.subheadline.bold())
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

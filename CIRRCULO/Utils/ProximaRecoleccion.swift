@@ -1,6 +1,6 @@
 import Foundation
 
-/// Calcula el próximo día de recolección según NADF-024
+/// Calcula el próximo día de recolección según NADF-024s
 func proximaRecoleccionTexto(para contenedor: ContenedorNADF) -> String {
     let calendar = Calendar.current
     let hoy = Date()
