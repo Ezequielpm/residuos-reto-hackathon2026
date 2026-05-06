@@ -2,9 +2,16 @@ import SwiftUI
 
 struct ResumenLegalView: View {
     @ObservedObject var vm: EmpresaViewModel
+    @EnvironmentObject var store: AppDataStore
     @State private var resumenGenerado: String?
     @State private var generando = false
     @State private var copiado = false
+
+    private var registroConCertificados: RegistroEmpresa {
+        var r = vm.registro
+        r.certificados = store.certificados(empresaId: vm.registro.empresaId)
+        return r
+    }
 
     var body: some View {
         NavigationStack {
@@ -130,7 +137,7 @@ struct ResumenLegalView: View {
     private func generarResumen() {
         generando = true
         Task {
-            let texto = await FoundationModelsService.shared.resumenEjecutivoEmpresa(vm.registro)
+            let texto = await FoundationModelsService.shared.resumenEjecutivoEmpresa(registroConCertificados)
             await MainActor.run {
                 withAnimation(.spring()) {
                     resumenGenerado = texto

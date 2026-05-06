@@ -100,12 +100,16 @@ actor FoundationModelsService {
     }
 
     func resumenEjecutivoEmpresa(_ registro: RegistroEmpresa) async -> String {
+        let kgTrazables = registro.certificados.reduce(0.0) { $0 + $1.kgTotales }
+        let foliosTexto: String = registro.certificados.prefix(3).map { $0.folio }.joined(separator: ", ")
         let prompt = """
         Empresa registró este mes: \(String(format: "%.1f", registro.kgTotalesMes)) kg de residuos, \
         \(registro.residuosRegistrados.count) registros documentados, \
-        ahorro fiscal estimado: $\(String(format: "%.0f", registro.ahorroFiscalEstimado)) MXN.
+        ahorro fiscal estimado: $\(String(format: "%.0f", registro.ahorroFiscalEstimado)) MXN. \
+        Cuenta con \(registro.certificados.count) certificados de trazabilidad emitidos por la red Nexia \
+        (\(String(format: "%.1f", kgTrazables)) kg con destino verificado en centro de acopio; folios: \(foliosTexto)).
         Genera un párrafo ejecutivo de 2 oraciones para presentar ante auditor de SEDEMA, \
-        destacando cumplimiento de LGPGIR y NADF-024.
+        destacando cumplimiento de LGPGIR y NADF-024 y citando la trazabilidad documentada por los certificados.
         """
         if #available(iOS 26.0, *) {
             do {
@@ -124,7 +128,14 @@ actor FoundationModelsService {
     }
 
     private func fallbackResumen(_ registro: RegistroEmpresa) -> String {
-        "Durante el presente mes, la empresa registró \(String(format: "%.1f", registro.kgTotalesMes)) kg de residuos con \(registro.residuosRegistrados.count) registros documentados, cumpliendo con la NADF-024 y la LGPGIR. Como resultado, la empresa es elegible para una reducción en el impuesto sobre nómina de hasta $\(String(format: "%.0f", registro.ahorroFiscalEstimado)) MXN, previa validación ante SEDEMA."
+        let kgTrazables = registro.certificados.reduce(0.0) { $0 + $1.kgTotales }
+        let trazabilidadTexto: String
+        if registro.certificados.isEmpty {
+            trazabilidadTexto = ""
+        } else {
+            trazabilidadTexto = " La cadena de custodia se acredita con \(registro.certificados.count) certificado(s) de trazabilidad Nexia (\(String(format: "%.1f", kgTrazables)) kg con destino verificado en centro de acopio)."
+        }
+        return "Durante el presente mes, la empresa registró \(String(format: "%.1f", registro.kgTotalesMes)) kg de residuos con \(registro.residuosRegistrados.count) registros documentados, cumpliendo con la NADF-024 y la LGPGIR.\(trazabilidadTexto) Como resultado, la empresa es elegible para una reducción en el impuesto sobre nómina de hasta $\(String(format: "%.0f", registro.ahorroFiscalEstimado)) MXN, previa validación ante SEDEMA."
     }
 
     private func respuestaHardcodeada(para texto: String) -> String {

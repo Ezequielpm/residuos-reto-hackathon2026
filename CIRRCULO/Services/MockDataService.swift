@@ -146,6 +146,48 @@ final class MockDataService {
         makeOxxo(id: "BF000000-0000-0000-0000-00000000000F", nombre: "OXXO Zócalo",            direccion: "Av. 20 de Noviembre 52, Centro, CDMX",              lat: 19.4330, lng: -99.1340)
     ]
 
+    // MARK: - Empresa como Punto de Acopio (origen de recolecciones)
+
+    lazy var puntoEmpresa: PuntoAcopio = PuntoAcopio(
+        id: UUID(uuidString: "E1000000-0000-0000-0000-000000000001")!,
+        nombre: "Walmart Polanco — Centro Logístico",
+        direccion: "Av. Ejército Nacional 843, Polanco, CDMX",
+        latitud: 19.4350,
+        longitud: -99.1980,
+        qrCode: "NEXIA-EMPRESA-E1000000-0000-0000-0000-000000000001",
+        materialDisponible: [:],
+        capacidadTotal: 500.0,
+        activo: true,
+        esOxxo: false,
+        esEmpresa: true,
+        empresaId: Usuario.idEcoTech.uuidString
+    )
+
+    lazy var certificadosIniciales: [CertificadoTrazabilidad] = [
+        CertificadoTrazabilidad(
+            id: UUID(),
+            folio: "CT-2026-0001",
+            empresaId: Usuario.idEcoTech.uuidString,
+            empresaNombre: "Walmart Polanco — Centro Logístico",
+            pepenadorNombre: "Beto Sánchez",
+            centroDestino: "Centro de Acopio Sur CDMX",
+            materiales: ["Cartón": 78.0, "Plástico PET": 24.5],
+            kgTotales: 102.5,
+            fecha: Date().addingTimeInterval(-1_209_600) // hace ~14 días
+        ),
+        CertificadoTrazabilidad(
+            id: UUID(),
+            folio: "CT-2026-0002",
+            empresaId: Usuario.idEcoTech.uuidString,
+            empresaNombre: "Walmart Polanco — Centro Logístico",
+            pepenadorNombre: "Rosa García",
+            centroDestino: "Acopio Oriente",
+            materiales: ["Vidrio": 45.0, "Aluminio": 5.2],
+            kgTotales: 50.2,
+            fecha: Date().addingTimeInterval(-432_000) // hace ~5 días
+        )
+    ]
+
     // MARK: - Solicitudes de Recolección
 
     lazy var solicitudesRecoleccion: [SolicitudRecoleccion] = solicitudesPuntosTradicionales + generarSolicitudesOxxo()
@@ -283,7 +325,8 @@ final class MockDataService {
             empresaId: Usuario.idEcoTech.uuidString,
             residuosRegistrados: registros,
             kgTotalesMes: kgTotal,
-            ahorroFiscalEstimado: ahorro
+            ahorroFiscalEstimado: ahorro,
+            certificados: certificadosIniciales
         )
     }()
 

@@ -15,6 +15,7 @@ final class AppDataStore: ObservableObject {
     @Published var recepcionesPendientes: [RecepcionPendiente]
     @Published var centrosAcopio: [CentroAcopio]
     @Published var cupones: [Cupon]
+    @Published var certificadosEmpresa: [CertificadoTrazabilidad]
 
     // Alerta tipo Uber para pepenadores
     @Published var solicitudNuevaParaPepenador: SolicitudRecoleccion?
@@ -26,11 +27,12 @@ final class AppDataStore: ObservableObject {
 
     init() {
         let mock = MockDataService.shared
-        self.puntosAcopio = mock.puntosAcopio + mock.oxxos
+        self.puntosAcopio = mock.puntosAcopio + mock.oxxos + [mock.puntoEmpresa]
         self.solicitudes = mock.solicitudesRecoleccion
         self.historialDepositos = mock.historialDepositos
         self.centrosAcopio = mock.centrosAcopio
         self.cupones = mock.cupones
+        self.certificadosEmpresa = mock.certificadosIniciales
         self.historialPepenador = Self.historialPepenadorInicial
         self.recepcionesPendientes = Self.recepcionesIniciales
     }
@@ -197,6 +199,53 @@ final class AppDataStore: ObservableObject {
         solicitudNuevaParaPepenador = solicitud
     }
 
+    // MARK: - Acciones Empresa
+
+    /// Crea una solicitud de recolección desde la empresa con los kg acumulados.
+    /// Devuelve el UUID de la solicitud creada para que el VM pueda trackearla.
+    @discardableResult
+    func solicitarRecoleccionEmpresa(materiales: [TipoResiduo: Double], empresaId: String) -> UUID? {
+        guard let punto = puntosAcopio.first(where: { $0.esEmpresa && $0.empresaId == empresaId }) else { return nil }
+
+        let kgTotal = materiales.values.reduce(0, +)
+        guard kgTotal > 0 else { return nil }
+
+        let valor = materiales.reduce(0.0) { acc, entry in
+            acc + entry.value * entry.key.valorMercado
+        }
+        let principales: [TipoResiduo] = Array(
+            materiales.sorted { $0.value > $1.value }.map { $0.key }.prefix(3)
+        )
+
+        let solicitud = SolicitudRecoleccion(
+            id: UUID(),
+            puntoAcopio: punto,
+            kgEstimados: kgTotal,
+            valorEstimado: valor,
+            materialesPrincipales: principales,
+            timestampPublicacion: Date(),
+            reclamadaPor: nil,
+            estado: .disponible
+        )
+        solicitudes.insert(solicitud, at: 0)
+        solicitudNuevaParaPepenador = solicitud
+        return solicitud.id
+    }
+
+    /// Solicitudes activas (no entregadas) de una empresa específica.
+    func solicitudActivaEmpresa(empresaId: String) -> SolicitudRecoleccion? {
+        solicitudes.first { sol in
+            sol.puntoAcopio.esEmpresa
+            && sol.puntoAcopio.empresaId == empresaId
+            && sol.estado != .entregada
+        }
+    }
+
+    /// Certificados emitidos para una empresa específica.
+    func certificados(empresaId: String) -> [CertificadoTrazabilidad] {
+        certificadosEmpresa.filter { $0.empresaId == empresaId }
+    }
+
     // MARK: - Acciones Pepenador
 
     func reclamarSolicitud(_ id: UUID) {
@@ -243,7 +292,9 @@ final class AppDataStore: ObservableObject {
         )
         recepcionesPendientes.insert(recepcion, at: 0)
 
-        if let punto = puntosAcopio.first(where: { $0.nombre == puntoOrigenNombre }),
+        let puntoOrigen = puntosAcopio.first(where: { $0.nombre == puntoOrigenNombre })
+
+        if let punto = puntoOrigen,
            let idx = puntosAcopio.firstIndex(where: { $0.id == punto.id }) {
             for (tipo, kg) in materiales {
                 puntosAcopio[idx].materialDisponible[tipo.rawValue, default: 0] -= kg
@@ -251,6 +302,31 @@ final class AppDataStore: ObservableObject {
                     puntosAcopio[idx].materialDisponible.removeValue(forKey: tipo.rawValue)
                 }
             }
+        }
+
+        // Marca la solicitud asociada como entregada
+        if let idxSol = solicitudes.firstIndex(where: { $0.puntoAcopio.nombre == puntoOrigenNombre && $0.reclamadaPor == currentUserId && $0.estado != .entregada }) {
+            solicitudes[idxSol].estado = .entregada
+        }
+
+        // Si el origen es una empresa, emite certificado de trazabilidad
+        if let punto = puntoOrigen, punto.esEmpresa, let empresaId = punto.empresaId {
+            let materialesString = materiales.reduce(into: [String: Double]()) { acc, entry in
+                acc[entry.key.rawValue] = entry.value
+            }
+            let folio = String(format: "CT-2026-%04d", certificadosEmpresa.count + 1)
+            let certificado = CertificadoTrazabilidad(
+                id: UUID(),
+                folio: folio,
+                empresaId: empresaId,
+                empresaNombre: punto.nombre,
+                pepenadorNombre: currentUserName,
+                centroDestino: centroNombre,
+                materiales: materialesString,
+                kgTotales: kgTotal,
+                fecha: Date()
+            )
+            certificadosEmpresa.insert(certificado, at: 0)
         }
     }
 

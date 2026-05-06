@@ -58,8 +58,9 @@ struct MapaRutasView: View {
                 Spacer()
 
                 // Leyenda
-                HStack(spacing: 16) {
+                HStack(spacing: 14) {
                     LeyendaItem(color: Color(hex: "#E65100"), texto: "Disponible")
+                    LeyendaItem(color: Color(hex: "#0D47A1"), texto: "Empresa")
                     LeyendaItem(color: Color(hex: "#4CAF50"), texto: "Tuya")
                     LeyendaItem(color: Color(.systemGray3), texto: "Reclamada")
                 }
@@ -96,10 +97,14 @@ struct SolicitudPin: View {
     var esMia: Bool = false
 
     private var disponible: Bool { solicitud.estado == .disponible }
+    private var esEmpresa: Bool { solicitud.puntoAcopio.esEmpresa }
 
     private var pinColor: LinearGradient {
         if esMia {
             return LinearGradient(colors: [Color(hex: "#66BB6A"), Color(hex: "#2E7D32")],
+                                  startPoint: .topLeading, endPoint: .bottomTrailing)
+        } else if esEmpresa && disponible {
+            return LinearGradient(colors: [Color(hex: "#42A5F5"), Color(hex: "#0D47A1")],
                                   startPoint: .topLeading, endPoint: .bottomTrailing)
         } else if disponible {
             return LinearGradient(colors: [Color(hex: "#FF7043"), Color(hex: "#E65100")],
@@ -112,6 +117,7 @@ struct SolicitudPin: View {
 
     private var triangleColor: Color {
         if esMia { return Color(hex: "#2E7D32") }
+        else if esEmpresa && disponible { return Color(hex: "#0D47A1") }
         else if disponible { return Color(hex: "#E65100") }
         else { return Color(.systemGray3) }
     }
@@ -130,9 +136,16 @@ struct SolicitudPin: View {
                     .frame(width: 72, height: 54)
 
                 VStack(spacing: 2) {
-                    Text(String(format: "%.0f kg", solicitud.kgEstimados))
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.white)
+                    HStack(spacing: 3) {
+                        if esEmpresa {
+                            Image(systemName: "building.2.fill")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(.white.opacity(0.9))
+                        }
+                        Text(String(format: "%.0f kg", solicitud.kgEstimados))
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
                     Text("$\(String(format: "%.0f", solicitud.valorEstimado))")
                         .font(.system(size: 11))
                         .foregroundStyle(.white.opacity(0.85))

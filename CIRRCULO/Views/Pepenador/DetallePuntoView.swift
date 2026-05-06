@@ -109,12 +109,25 @@ struct DetallePuntoView: View {
 struct DetallePuntoHeader: View {
     let solicitud: SolicitudRecoleccion
 
-    var body: some View {
-        ZStack(alignment: .bottom) {
-            LinearGradient(
+    private var esEmpresa: Bool { solicitud.puntoAcopio.esEmpresa }
+
+    private var headerGradient: LinearGradient {
+        if esEmpresa {
+            return LinearGradient(
+                colors: [Color(hex: "#0D47A1"), Color(hex: "#1565C0"), Color(hex: "#1976D2")],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+        } else {
+            return LinearGradient(
                 colors: [Color(hex: "#BF360C"), Color(hex: "#E65100"), Color(hex: "#F4511E")],
                 startPoint: .topLeading, endPoint: .bottomTrailing
             )
+        }
+    }
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            headerGradient
             Circle().fill(.white.opacity(0.05)).frame(width: 200).offset(x: 130, y: -20)
             Circle().fill(.white.opacity(0.04)).frame(width: 140).offset(x: -70, y: 30)
 
@@ -124,10 +137,24 @@ struct DetallePuntoHeader: View {
                     .fill(.white.opacity(0.3))
                     .frame(width: 36, height: 4)
 
+                if esEmpresa {
+                    HStack(spacing: 6) {
+                        Image(systemName: "building.2.fill")
+                            .font(.caption2)
+                        Text("RECOLECCIÓN CORPORATIVA")
+                            .font(.caption2.bold())
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 5)
+                    .background(.white.opacity(0.2))
+                    .clipShape(Capsule())
+                }
+
                 HStack(spacing: 16) {
                     ZStack {
                         Circle().fill(.white.opacity(0.15)).frame(width: 52, height: 52)
-                        Image(systemName: "mappin.circle.fill")
+                        Image(systemName: esEmpresa ? "building.2.fill" : "mappin.circle.fill")
                             .font(.system(size: 26))
                             .foregroundStyle(.white)
                     }

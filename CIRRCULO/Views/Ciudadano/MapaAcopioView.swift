@@ -3,7 +3,7 @@ import MapKit
 
 struct MapaAcopioView: View {
     @EnvironmentObject var store: AppDataStore
-    private var puntos: [PuntoAcopio] { store.puntosAcopio }
+    private var puntos: [PuntoAcopio] { store.puntosAcopio.filter { !$0.esEmpresa } }
     @State private var puntoSeleccionado: PuntoAcopio?
     @State private var position = MapCameraPosition.region(
         MKCoordinateRegion(

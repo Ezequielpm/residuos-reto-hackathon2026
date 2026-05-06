@@ -3,7 +3,28 @@ import Charts
 
 struct DashboardEmpresaView: View {
     @ObservedObject var vm: EmpresaViewModel
+    @EnvironmentObject var store: AppDataStore
     var onCambiarPerfil: (() -> Void)? = nil
+
+    private var solicitudActiva: SolicitudRecoleccion? {
+        store.solicitudActivaEmpresa(empresaId: vm.registro.empresaId)
+    }
+
+    private var certificados: [CertificadoTrazabilidad] {
+        store.certificados(empresaId: vm.registro.empresaId)
+    }
+
+    private var materialesAcumulados: [TipoResiduo: Double] {
+        var mapa: [TipoResiduo: Double] = [:]
+        for r in vm.registro.residuosRegistrados where r.tipo != .noReciclable {
+            mapa[r.tipo, default: 0] += r.kg
+        }
+        return mapa
+    }
+
+    private var kgDisponiblesParaRecoleccion: Double {
+        materialesAcumulados.values.reduce(0, +)
+    }
 
     var body: some View {
         NavigationStack {
@@ -80,8 +101,8 @@ struct DashboardEmpresaView: View {
                         // Cadena de custodia
                         HStack(spacing: 14) {
                             CustodiaCard(
-                                valor: "\(vm.registro.residuosRegistrados.filter { $0.destinoCentroAcopio != nil }.count)",
-                                label: "Con destino\ndocumentado",
+                                valor: "\(certificados.count)",
+                                label: "Certificados\nemitidos",
                                 icono: "checkmark.shield.fill",
                                 color: Color(hex: "#2E7D32")
                             )
@@ -93,6 +114,15 @@ struct DashboardEmpresaView: View {
                             )
                         }
                         .padding(.horizontal, 20)
+
+                        // Cadena de trazabilidad — solicitar recolección + certificados
+                        TrazabilidadCard(
+                            kgDisponibles: kgDisponiblesParaRecoleccion,
+                            solicitudActiva: solicitudActiva,
+                            certificados: certificados,
+                            onSolicitar: solicitarRecoleccion
+                        )
+                        .padding(.horizontal, 20)
                         .padding(.bottom, 32)
                     }
                     .padding(.top, 24)
@@ -101,6 +131,236 @@ struct DashboardEmpresaView: View {
             .ignoresSafeArea(edges: .top)
             .navigationBarHidden(true)
         }
+    }
+
+    private func solicitarRecoleccion() {
+        store.solicitarRecoleccionEmpresa(
+            materiales: materialesAcumulados,
+            empresaId: vm.registro.empresaId
+        )
+    }
+}
+
+// MARK: - Trazabilidad Card
+
+struct TrazabilidadCard: View {
+    let kgDisponibles: Double
+    let solicitudActiva: SolicitudRecoleccion?
+    let certificados: [CertificadoTrazabilidad]
+    let onSolicitar: () -> Void
+
+    @State private var mostrarTodosCertificados = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            SectionHeader(titulo: "Cadena de trazabilidad",
+                          icono: "link.circle.fill",
+                          color: Color(hex: "#1565C0"))
+
+            // Bloque de solicitud
+            VStack(spacing: 14) {
+                if let solicitud = solicitudActiva {
+                    SolicitudActivaPanel(solicitud: solicitud)
+                } else {
+                    SolicitarRecoleccionPanel(
+                        kgDisponibles: kgDisponibles,
+                        onSolicitar: onSolicitar
+                    )
+                }
+            }
+            .padding(16)
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .shadow(color: .black.opacity(0.06), radius: 8, y: 3)
+
+            // Certificados
+            if !certificados.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Label("Certificados emitidos", systemImage: "checkmark.seal.fill")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(Color(hex: "#2E7D32"))
+                        Spacer()
+                        if certificados.count > 2 {
+                            Button(mostrarTodosCertificados ? "Ver menos" : "Ver todos") {
+                                withAnimation { mostrarTodosCertificados.toggle() }
+                            }
+                            .font(.caption.bold())
+                            .foregroundStyle(Color(hex: "#1565C0"))
+                        }
+                    }
+
+                    let visibles = mostrarTodosCertificados ? certificados : Array(certificados.prefix(2))
+                    VStack(spacing: 8) {
+                        ForEach(visibles) { cert in
+                            CertificadoRow(cert: cert)
+                        }
+                    }
+                }
+                .padding(16)
+                .background(Color(.systemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .shadow(color: .black.opacity(0.06), radius: 8, y: 3)
+            }
+        }
+    }
+}
+
+struct SolicitarRecoleccionPanel: View {
+    let kgDisponibles: Double
+    let onSolicitar: () -> Void
+
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle().fill(Color(hex: "#E3F2FD")).frame(width: 52, height: 52)
+                    Image(systemName: "shippingbox.fill")
+                        .font(.title3)
+                        .foregroundStyle(Color(hex: "#1565C0"))
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(String(format: "%.1f kg", kgDisponibles))
+                        .font(.title3.bold())
+                        .foregroundStyle(Color(hex: "#1565C0"))
+                    Text("acumulados listos para recolección")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+
+            Button(action: onSolicitar) {
+                HStack {
+                    Image(systemName: "paperplane.fill")
+                    Text("Solicitar recolección de pepenador")
+                        .font(.headline)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(
+                    LinearGradient(
+                        colors: [Color(hex: "#42A5F5"), Color(hex: "#1565C0")],
+                        startPoint: .leading, endPoint: .trailing
+                    )
+                )
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: Color(hex: "#1565C0").opacity(0.3), radius: 6, y: 3)
+            }
+            .disabled(kgDisponibles <= 0)
+            .opacity(kgDisponibles <= 0 ? 0.5 : 1)
+        }
+    }
+}
+
+struct SolicitudActivaPanel: View {
+    let solicitud: SolicitudRecoleccion
+
+    private var estadoColor: Color {
+        switch solicitud.estado {
+        case .disponible: return Color(hex: "#F9A825")
+        case .reclamada:  return Color(hex: "#1565C0")
+        case .enRuta:     return Color(hex: "#7B1FA2")
+        case .entregada:  return Color(hex: "#2E7D32")
+        }
+    }
+
+    private var estadoTexto: String {
+        switch solicitud.estado {
+        case .disponible: return "Buscando recolector cercano…"
+        case .reclamada:  return "Recolector asignado · en camino"
+        case .enRuta:     return "Recolector recogiendo material"
+        case .entregada:  return "Material entregado al centro"
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle().fill(estadoColor.opacity(0.15)).frame(width: 52, height: 52)
+                    Image(systemName: "truck.box.fill")
+                        .font(.title3)
+                        .foregroundStyle(estadoColor)
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Recolección en curso")
+                        .font(.subheadline.bold())
+                    Text(estadoTexto)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+
+            HStack(spacing: 0) {
+                MiniStatEmpresa(valor: String(format: "%.0f kg", solicitud.kgEstimados), label: "publicados")
+                Divider().frame(width: 1, height: 28).background(Color(.systemGray5))
+                MiniStatEmpresa(valor: "$\(String(format: "%.0f", solicitud.valorEstimado))", label: "valor MXN")
+                Divider().frame(width: 1, height: 28).background(Color(.systemGray5))
+                MiniStatEmpresa(valor: "\(solicitud.materialesPrincipales.count)", label: "materiales")
+            }
+            .padding(.vertical, 10)
+            .background(Color(.systemGray6))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+    }
+}
+
+struct MiniStatEmpresa: View {
+    let valor: String
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(valor).font(.subheadline.bold()).foregroundStyle(Color(hex: "#1565C0"))
+            Text(label).font(.caption2).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+struct CertificadoRow: View {
+    let cert: CertificadoTrazabilidad
+
+    private var fechaCorta: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "es_MX")
+        formatter.dateFormat = "d MMM"
+        return formatter.string(from: cert.fecha)
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(hex: "#E8F5E9"))
+                    .frame(width: 44, height: 44)
+                Image(systemName: "checkmark.seal.fill")
+                    .foregroundStyle(Color(hex: "#2E7D32"))
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(cert.folio)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(Color(hex: "#2E7D32"))
+                    Text("·")
+                        .foregroundStyle(.secondary)
+                    Text(fechaCorta)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Text("\(String(format: "%.1f", cert.kgTotales)) kg → \(cert.centroDestino)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer()
+        }
+        .padding(10)
+        .background(Color(hex: "#F1F8E9"))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 

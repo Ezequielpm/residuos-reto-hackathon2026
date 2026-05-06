@@ -110,6 +110,8 @@ struct PuntoAcopio: Identifiable, Codable {
     var capacidadTotal: Double
     var activo: Bool
     var esOxxo: Bool = false
+    var esEmpresa: Bool = false
+    var empresaId: String? = nil
     var imagenAsset: String? = nil
     var promociones: [String] = []
     var descripcionLugar: String? = nil
@@ -122,6 +124,20 @@ struct PuntoAcopio: Identifiable, Codable {
         let total = materialDisponible.values.reduce(0, +)
         return min(total / capacidadTotal, 1.0)
     }
+}
+
+// MARK: - Certificado de trazabilidad (cierra el loop empresa → pepenador → centro)
+
+struct CertificadoTrazabilidad: Identifiable, Codable {
+    let id: UUID
+    let folio: String
+    let empresaId: String
+    let empresaNombre: String
+    let pepenadorNombre: String
+    let centroDestino: String
+    let materiales: [String: Double]
+    let kgTotales: Double
+    let fecha: Date
 }
 
 // MARK: - Ticket de depósito
@@ -170,6 +186,7 @@ struct RegistroEmpresa {
     var residuosRegistrados: [RegistroResiduo]
     var kgTotalesMes: Double
     var ahorroFiscalEstimado: Double
+    var certificados: [CertificadoTrazabilidad] = []
 }
 
 struct RegistroResiduo: Identifiable {
