@@ -1,12 +1,14 @@
 import SwiftUI
 
 struct PerfilCiudadanoView: View {
+    @EnvironmentObject var store: AppDataStore
     var onCambiarPerfil: (() -> Void)? = nil
-    @State private var historial = MockDataService.shared.historialDepositos
-    @State private var cupones = MockDataService.shared.cupones
 
-    private var totalPuntos: Int { historial.reduce(0) { $0 + $1.puntosOtorgados } }
-    private var totalKg: Double { historial.flatMap { $0.materiales.values }.reduce(0, +) }
+    private var historial: [DepositoTicket] { store.misDepositos }
+    private var cupones: [Cupon] { store.cupones }
+
+    private var totalPuntos: Int { store.totalPuntosCiudadano }
+    private var totalKg: Double { store.totalKgCiudadano }
     private var co2Evitado: Double { totalKg * 2.5 }
 
     private var rachaActual: Int {
@@ -61,6 +63,7 @@ struct PerfilCiudadanoView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     HeaderPerfilCiudadano(
+                        nombreUsuario: store.currentUserName,
                         puntos: totalPuntos,
                         kg: totalKg,
                         co2: co2Evitado,
@@ -96,6 +99,7 @@ struct PerfilCiudadanoView: View {
 // MARK: - Header
 
 struct HeaderPerfilCiudadano: View {
+    let nombreUsuario: String
     let puntos: Int
     let kg: Double
     let co2: Double
@@ -141,8 +145,8 @@ struct HeaderPerfilCiudadano: View {
                     if let onCambiarPerfil {
                         Button(action: onCambiarPerfil) {
                             HStack(spacing: 5) {
-                                Image(systemName: "arrow.2.circlepath").font(.caption.bold())
-                                Text("Cambiar perfil").font(.caption.bold())
+                                Image(systemName: "rectangle.portrait.and.arrow.right").font(.caption.bold())
+                                Text("Salir").font(.caption.bold())
                             }
                             .foregroundStyle(.white.opacity(0.9))
                             .padding(.horizontal, 12)
@@ -173,11 +177,16 @@ struct HeaderPerfilCiudadano: View {
                     Circle()
                         .fill(.white.opacity(0.15))
                         .frame(width: 72, height: 72)
-                    Image(systemName: "person.fill")
-                        .font(.system(size: 32))
+                    Text(String(nombreUsuario.prefix(1)).uppercased())
+                        .font(.system(size: 30, weight: .bold))
                         .foregroundStyle(.white)
                 }
-                .padding(.bottom, 16)
+                .padding(.bottom, 8)
+
+                Text(nombreUsuario)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .padding(.bottom, 12)
 
                 // Puntos animados
                 VStack(spacing: 2) {
@@ -402,6 +411,8 @@ struct MaterialFilaRow: View {
         case .lata:           return "cylinder.fill"
         case .organicoComida: return "leaf.fill"
         case .organicoPoda:   return "tree.fill"
+        case .electronico:    return "bolt.fill"
+        case .textil:         return "tshirt.fill"
         case .noReciclable:   return "trash.fill"
         case .tetraPak:       return "cube.fill"
         }
@@ -622,8 +633,9 @@ struct HistorialCiudadanoSection: View {
 
 struct TicketRowMejorado: View {
     let ticket: DepositoTicket
+    @EnvironmentObject var store: AppDataStore
     private var punto: PuntoAcopio? {
-        MockDataService.shared.puntosAcopio.first { $0.id == ticket.puntoAcopioId }
+        store.puntosAcopio.first { $0.id == ticket.puntoAcopioId }
     }
     private var kgTotal: Double { ticket.materiales.values.reduce(0, +) }
     private var materialesPrincipales: [TipoResiduo] {
@@ -709,4 +721,4 @@ struct SectionHeader: View {
 
 typealias SectionHeaderCiudadano = SectionHeader
 
-#Preview { PerfilCiudadanoView() }
+#Preview { PerfilCiudadanoView().environmentObject(AppDataStore()) }

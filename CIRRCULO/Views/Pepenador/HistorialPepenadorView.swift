@@ -1,9 +1,10 @@
 import SwiftUI
 
 struct HistorialPepenadorView: View {
+    @EnvironmentObject var store: AppDataStore
     var onCambiarPerfil: (() -> Void)? = nil
-    @State private var recolecciones = historialEjemplo
 
+    private var recolecciones: [RecoleccionHistorial] { store.misRecolecciones }
     private var totalMes: Double { recolecciones.reduce(0) { $0 + $1.ingresos } }
     private var totalKg: Double { recolecciones.reduce(0) { $0 + $1.kgTotales } }
 
@@ -71,8 +72,8 @@ struct HistorialPepenadorHeader: View {
                         if let onCambiarPerfil {
                             Button(action: onCambiarPerfil) {
                                 HStack(spacing: 4) {
-                                    Image(systemName: "arrow.2.circlepath").font(.caption2.bold())
-                                    Text("Cambiar").font(.caption2.bold())
+                                    Image(systemName: "rectangle.portrait.and.arrow.right").font(.caption2.bold())
+                                    Text("Salir").font(.caption2.bold())
                                 }
                                 .foregroundStyle(.white.opacity(0.9))
                                 .padding(.horizontal, 10)
@@ -137,6 +138,7 @@ struct StatBadgePepenador: View {
 
 struct RecoleccionHistorial: Identifiable {
     let id: UUID
+    var pepenadorId: String = ""
     let puntoNombre: String
     let fecha: Date
     let kgTotales: Double
@@ -187,14 +189,7 @@ struct RecoleccionRow: View {
     }
 }
 
-private let historialEjemplo: [RecoleccionHistorial] = [
-    RecoleccionHistorial(id: UUID(), puntoNombre: "Ecocentro Coyoacán",    fecha: Date().addingTimeInterval(-86400),   kgTotales: 23.7, ingresos: 267.0, centroDestino: "Centro Sur"),
-    RecoleccionHistorial(id: UUID(), puntoNombre: "Punto Verde Roma Norte", fecha: Date().addingTimeInterval(-172800),  kgTotales: 43.5, ingresos: 48.0,  centroDestino: "Centro Sur"),
-    RecoleccionHistorial(id: UUID(), puntoNombre: "Reciclaje Condesa",     fecha: Date().addingTimeInterval(-345600),  kgTotales: 35.0, ingresos: 134.5, centroDestino: "Acopio Oriente"),
-    RecoleccionHistorial(id: UUID(), puntoNombre: "Acopio Tlalpan",        fecha: Date().addingTimeInterval(-604800),  kgTotales: 18.2, ingresos: 95.0,  centroDestino: "Centro Sur"),
-    RecoleccionHistorial(id: UUID(), puntoNombre: "EcoBox Polanco",        fecha: Date().addingTimeInterval(-864000),  kgTotales: 12.8, ingresos: 220.0, centroDestino: "Centro Sur")
-]
-
 #Preview {
     HistorialPepenadorView()
+        .environmentObject(AppDataStore())
 }

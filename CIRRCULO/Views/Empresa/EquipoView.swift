@@ -34,8 +34,8 @@ struct EquipoView: View {
                     if let onCambiarPerfil {
                         Button(action: onCambiarPerfil) {
                             HStack(spacing: 4) {
-                                Image(systemName: "arrow.2.circlepath")
-                                Text("Cambiar perfil")
+                                Image(systemName: "rectangle.portrait.and.arrow.right")
+                                Text("Salir")
                             }
                             .font(.caption.bold())
                         }
@@ -48,7 +48,7 @@ struct EquipoView: View {
                 }
             }
             .sheet(isPresented: $mostrandoAgregar) {
-                AgregarEmpleadoSheet(nombre: $nuevoNombre) {
+                AgregarEmpleadoSheet(nombre: $nuevoNombre, onAgregar: {
                     let nombre = nuevoNombre.trimmingCharacters(in: .whitespaces)
                     if !nombre.isEmpty {
                         vm.empleados.append(Empleado(
@@ -58,7 +58,10 @@ struct EquipoView: View {
                         nuevoNombre = ""
                     }
                     mostrandoAgregar = false
-                }
+                }, onCancelar: {
+                    nuevoNombre = ""
+                    mostrandoAgregar = false
+                })
             }
         }
     }
@@ -103,6 +106,7 @@ struct StatItem: View {
 struct AgregarEmpleadoSheet: View {
     @Binding var nombre: String
     let onAgregar: () -> Void
+    let onCancelar: () -> Void
 
     var body: some View {
         NavigationStack {
@@ -115,7 +119,7 @@ struct AgregarEmpleadoSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancelar") { onAgregar() }
+                    Button("Cancelar") { onCancelar() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Agregar") { onAgregar() }

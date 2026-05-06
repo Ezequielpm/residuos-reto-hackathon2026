@@ -185,6 +185,10 @@ struct AhorroFiscalView: View {
             }
             .ignoresSafeArea(edges: .top)
             .navigationBarHidden(true)
+            .scrollDismissesKeyboard(.interactively)
+            .onTapGesture {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
             .onAppear {
                 withAnimation { animado = true }
             }

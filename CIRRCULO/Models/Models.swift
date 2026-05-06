@@ -13,6 +13,8 @@ enum TipoResiduo: String, CaseIterable, Codable {
     case lata          = "Lata"
     case organicoComida  = "Orgánico - comida"
     case organicoPoda    = "Orgánico - poda"
+    case electronico   = "Electrónico"
+    case textil        = "Textil"
     case noReciclable  = "No reciclable"
     case tetraPak      = "Tetra Pak"
 
@@ -24,6 +26,7 @@ enum TipoResiduo: String, CaseIterable, Codable {
         case .organicoComida, .organicoPoda: return 15
         case .carton, .papel:              return 10
         case .vidrio:                      return 5
+        case .electronico, .textil:        return 0
         case .noReciclable:                return 0
         }
     }
@@ -39,6 +42,8 @@ enum TipoResiduo: String, CaseIterable, Codable {
         case .lata:                        return 18.0
         case .tetraPak:                    return 2.0
         case .organicoComida, .organicoPoda: return 1.0
+        case .electronico:                 return 0.0
+        case .textil:                      return 0.0
         case .noReciclable:                return 0.0
         }
     }
@@ -47,7 +52,7 @@ enum TipoResiduo: String, CaseIterable, Codable {
         switch self {
         case .organicoComida, .organicoPoda:
             return .verde
-        case .noReciclable:
+        case .noReciclable, .electronico, .textil:
             return .naranja
         default:
             return .gris
@@ -87,6 +92,7 @@ struct ResultadoClasificacion {
     let proximaRecoleccion: String
     let instrucciones: String
     let valorMercado: Double
+    var objetoDetectado: String = ""
 
     var esAmbiguo: Bool { confianza < 0.70 }
 }

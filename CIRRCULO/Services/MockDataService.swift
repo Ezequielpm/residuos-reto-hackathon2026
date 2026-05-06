@@ -15,7 +15,7 @@ final class MockDataService {
             latitud: 19.3467,
             longitud: -99.1605,
             qrCode: "CIRRCULO-PUNTO-A1000000-0000-0000-0000-000000000001",
-            materialDisponible: ["Cartón": 12.0, "PET": 8.5, "Aluminio": 3.2],
+            materialDisponible: ["Cartón": 12.0, "Plástico PET": 8.5, "Aluminio": 3.2],
             capacidadTotal: 100.0,
             activo: true
         ),
@@ -26,7 +26,7 @@ final class MockDataService {
             latitud: 19.4184,
             longitud: -99.1631,
             qrCode: "CIRRCULO-PUNTO-A2000000-0000-0000-0000-000000000002",
-            materialDisponible: ["Vidrio": 25.0, "PET": 18.0],
+            materialDisponible: ["Vidrio": 25.0, "Plástico PET": 18.0],
             capacidadTotal: 80.0,
             activo: true
         ),
@@ -59,7 +59,7 @@ final class MockDataService {
             latitud: 19.4322,
             longitud: -99.1955,
             qrCode: "CIRRCULO-PUNTO-A5000000-0000-0000-0000-000000000005",
-            materialDisponible: ["PET": 5.0, "Aluminio": 1.5],
+            materialDisponible: ["Plástico PET": 5.0, "Aluminio": 1.5],
             capacidadTotal: 50.0,
             activo: true
         ),
@@ -81,7 +81,7 @@ final class MockDataService {
             latitud: 19.3891,
             longitud: -99.1718,
             qrCode: "CIRRCULO-PUNTO-A7000000-0000-0000-0000-000000000007",
-            materialDisponible: ["Aluminio": 9.5, "PET": 14.0],
+            materialDisponible: ["Aluminio": 9.5, "Plástico PET": 14.0],
             capacidadTotal: 70.0,
             activo: true
         ),
@@ -98,7 +98,7 @@ final class MockDataService {
         )
     ]
 
-    // MARK: - Solicitudes de Recolección (6 activas, 1 reclamada)
+    // MARK: - Solicitudes de Recolección
 
     lazy var solicitudesRecoleccion: [SolicitudRecoleccion] = [
         SolicitudRecoleccion(
@@ -151,6 +151,7 @@ final class MockDataService {
             reclamadaPor: nil,
             estado: .disponible
         ),
+        // Reclamada por Beto
         SolicitudRecoleccion(
             id: UUID(),
             puntoAcopio: puntosAcopio[5],
@@ -158,38 +159,53 @@ final class MockDataService {
             valorEstimado: 42.0,
             materialesPrincipales: [.carton, .papel],
             timestampPublicacion: Date().addingTimeInterval(-10800),
-            reclamadaPor: "pepenador-beto-01",
+            reclamadaPor: Usuario.idBeto.uuidString,
+            estado: .reclamada
+        ),
+        // Reclamada por Rosa
+        SolicitudRecoleccion(
+            id: UUID(),
+            puntoAcopio: puntosAcopio[3],
+            kgEstimados: 40.0,
+            valorEstimado: 55.0,
+            materialesPrincipales: [.organicoComida],
+            timestampPublicacion: Date().addingTimeInterval(-14400),
+            reclamadaPor: Usuario.idRosa.uuidString,
             estado: .reclamada
         )
     ]
 
-    // MARK: - Historial Ciudadano (7 días seguidos = racha real)
+    // MARK: - Historial Depósitos (distribuidos entre María y Jorge)
 
     lazy var historialDepositos: [DepositoTicket] = {
         let puntos = puntosAcopio
+        let maria = Usuario.idMaria.uuidString
+        let jorge = Usuario.idJorge.uuidString
         return [
-            makeTicket(dias: -1,  punto: puntos[0], materiales: [.plasticoPET: 0.5, .carton: 1.2],  verificado: true),
-            makeTicket(dias: -2,  punto: puntos[1], materiales: [.aluminio: 0.2],                    verificado: true),
-            makeTicket(dias: -3,  punto: puntos[1], materiales: [.vidrio: 2.0],                      verificado: true),
-            makeTicket(dias: -4,  punto: puntos[2], materiales: [.carton: 1.5, .papel: 0.5],         verificado: true),
-            makeTicket(dias: -5,  punto: puntos[0], materiales: [.aluminio: 0.3, .plasticoPET: 0.8], verificado: true),
-            makeTicket(dias: -6,  punto: puntos[3], materiales: [.organicoComida: 1.5],              verificado: true),
-            makeTicket(dias: -7,  punto: puntos[4], materiales: [.plasticoPET: 0.6, .tetraPak: 0.3], verificado: true),
-            makeTicket(dias: -12, punto: puntos[1], materiales: [.plasticoPET: 1.0, .tetraPak: 0.4], verificado: true),
-            makeTicket(dias: -15, punto: puntos[3], materiales: [.organicoComida: 2.0],              verificado: true),
-            makeTicket(dias: -20, punto: puntos[0], materiales: [.aluminio: 0.6],                    verificado: true),
-            makeTicket(dias: -25, punto: puntos[4], materiales: [.carton: 2.0, .papel: 0.8],         verificado: true)
+            // María: 7 depósitos (racha de 7 días)
+            makeTicket(dias: -1,  punto: puntos[0], materiales: [.plasticoPET: 0.5, .carton: 1.2],  ciudadanoId: maria),
+            makeTicket(dias: -2,  punto: puntos[1], materiales: [.aluminio: 0.2],                    ciudadanoId: maria),
+            makeTicket(dias: -3,  punto: puntos[1], materiales: [.vidrio: 2.0],                      ciudadanoId: maria),
+            makeTicket(dias: -4,  punto: puntos[2], materiales: [.carton: 1.5, .papel: 0.5],         ciudadanoId: maria),
+            makeTicket(dias: -5,  punto: puntos[0], materiales: [.aluminio: 0.3, .plasticoPET: 0.8], ciudadanoId: maria),
+            makeTicket(dias: -6,  punto: puntos[3], materiales: [.organicoComida: 1.5],              ciudadanoId: maria),
+            makeTicket(dias: -7,  punto: puntos[4], materiales: [.plasticoPET: 0.6, .tetraPak: 0.3], ciudadanoId: maria),
+            // Jorge: 4 depósitos
+            makeTicket(dias: -1,  punto: puntos[2], materiales: [.carton: 2.0, .papel: 0.8],         ciudadanoId: jorge),
+            makeTicket(dias: -3,  punto: puntos[0], materiales: [.aluminio: 0.6],                    ciudadanoId: jorge),
+            makeTicket(dias: -8,  punto: puntos[4], materiales: [.plasticoPET: 1.0, .tetraPak: 0.4], ciudadanoId: jorge),
+            makeTicket(dias: -15, punto: puntos[3], materiales: [.organicoComida: 2.0],              ciudadanoId: jorge),
         ]
     }()
 
-    // MARK: - Dashboard Empresa
+    // MARK: - Dashboard Empresa (EcoTech)
 
     lazy var registroEmpresa: RegistroEmpresa = {
         let registros = generarRegistrosEmpresa()
         let kgTotal = registros.reduce(0) { $0 + $1.kg }
         let ahorro = calcularAhorroFiscal(kgTotal: kgTotal)
         return RegistroEmpresa(
-            empresaId: "empresa-demo-01",
+            empresaId: Usuario.idEcoTech.uuidString,
             residuosRegistrados: registros,
             kgTotalesMes: kgTotal,
             ahorroFiscalEstimado: ahorro
@@ -205,7 +221,7 @@ final class MockDataService {
 
     lazy var centrosAcopio: [CentroAcopio] = [
         CentroAcopio(
-            id: UUID(),
+            id: UUID(uuidString: "C1000000-0000-0000-0000-000000000001")!,
             nombre: "Centro de Acopio Sur CDMX",
             direccion: "Calzada de Tlalpan 2800, CDMX",
             latitud: 19.3200,
@@ -221,7 +237,7 @@ final class MockDataService {
             ]
         ),
         CentroAcopio(
-            id: UUID(),
+            id: UUID(uuidString: "C2000000-0000-0000-0000-000000000002")!,
             nombre: "Acopio Oriente",
             direccion: "Av. Texcoco 800, Iztapalapa, CDMX",
             latitud: 19.3640,
@@ -235,7 +251,7 @@ final class MockDataService {
         )
     ]
 
-    // MARK: - Cupones (con propósito real, no solo descuentos)
+    // MARK: - Cupones
 
     lazy var cupones: [Cupon] = [
         Cupon(id: UUID(), titulo: "Café de cortesía",
@@ -262,16 +278,16 @@ final class MockDataService {
 
     // MARK: - Helpers privados
 
-    private func makeTicket(dias: Int, punto: PuntoAcopio, materiales: [TipoResiduo: Double], verificado: Bool) -> DepositoTicket {
+    private func makeTicket(dias: Int, punto: PuntoAcopio, materiales: [TipoResiduo: Double], ciudadanoId: String) -> DepositoTicket {
         var ticket = DepositoTicket(
             id: UUID(),
-            ciudadanoId: "ciudadano-demo-01",
+            ciudadanoId: ciudadanoId,
             puntoAcopioId: punto.id,
             materiales: materiales,
             fotoVerificacion: nil,
             timestamp: Calendar.current.date(byAdding: .day, value: dias, to: Date())!,
             puntosOtorgados: 0,
-            verificado: verificado
+            verificado: true
         )
         ticket.puntosOtorgados = ticket.totalPuntos
         return ticket

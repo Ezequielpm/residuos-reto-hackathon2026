@@ -3,13 +3,14 @@ import Charts
 
 struct DashboardEmpresaView: View {
     @ObservedObject var vm: EmpresaViewModel
+    var onCambiarPerfil: (() -> Void)? = nil
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 0) {
                     // Header degradado azul
-                    HeaderEmpresa(vm: vm)
+                    HeaderEmpresa(vm: vm, onCambiarPerfil: onCambiarPerfil)
 
                     VStack(spacing: 20) {
                         // Gráfica de barras
@@ -107,6 +108,7 @@ struct DashboardEmpresaView: View {
 
 struct HeaderEmpresa: View {
     @ObservedObject var vm: EmpresaViewModel
+    var onCambiarPerfil: (() -> Void)? = nil
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -120,7 +122,7 @@ struct HeaderEmpresa: View {
             VStack(spacing: 20) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Empresa Demo")
+                        Text("WALMART")
                             .font(.title2.bold())
                             .foregroundStyle(.white)
                         Text("Mayo 2026")
@@ -128,9 +130,24 @@ struct HeaderEmpresa: View {
                             .foregroundStyle(.white.opacity(0.75))
                     }
                     Spacer()
-                    Image(systemName: "building.2.fill")
-                        .font(.system(size: 32))
-                        .foregroundStyle(.white.opacity(0.3))
+                    VStack(spacing: 8) {
+                        Image(systemName: "building.2.fill")
+                            .font(.system(size: 32))
+                            .foregroundStyle(.white.opacity(0.3))
+                        if let onCambiarPerfil {
+                            Button(action: onCambiarPerfil) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "rectangle.portrait.and.arrow.right").font(.caption2.bold())
+                                    Text("Salir").font(.caption2.bold())
+                                }
+                                .foregroundStyle(.white.opacity(0.9))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(.white.opacity(0.15))
+                                .clipShape(Capsule())
+                            }
+                        }
+                    }
                 }
 
                 // Métricas en grid

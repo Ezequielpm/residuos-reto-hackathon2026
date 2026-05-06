@@ -1,16 +1,21 @@
 import AVFoundation
 import Combine
 import UIKit
+import CoreImage
 
 final class CameraService: NSObject, ObservableObject {
 
-    @Published var pixelBuffer: CVPixelBuffer?
+    /// CGImage listo para clasificar (convertido síncronamente en el thread de cámara)
+    var currentFrame: CGImage?
+    /// Counter que se incrementa con cada frame — usar con onChange para detectar nuevos frames
+    @Published var frameCount: Int = 0
     @Published var error: String?
     @Published var permisoConcedido = false
 
     private let session = AVCaptureSession()
     private let queue = DispatchQueue(label: "mx.enactus.cirrculo.camera", qos: .userInteractive)
     private let output = AVCaptureVideoDataOutput()
+    private let ciContext = CIContext()
 
     var captureSession: AVCaptureSession { session }
 
@@ -37,7 +42,7 @@ final class CameraService: NSObject, ObservableObject {
         queue.async { [weak self] in
             guard let self else { return }
             self.session.beginConfiguration()
-            self.session.sessionPreset = .vga640x480
+            self.session.sessionPreset = .high
 
             guard let dispositivo = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
                   let input = try? AVCaptureDeviceInput(device: dispositivo),
@@ -53,6 +58,11 @@ final class CameraService: NSObject, ObservableObject {
             self.output.alwaysDiscardsLateVideoFrames = true
             if self.session.canAddOutput(self.output) {
                 self.session.addOutput(self.output)
+            }
+
+            if let conn = self.output.connection(with: .video),
+               conn.isVideoRotationAngleSupported(90) {
+                conn.videoRotationAngle = 90
             }
 
             self.session.commitConfiguration()
@@ -73,9 +83,14 @@ extension CameraService: AVCaptureVideoDataOutputSampleBufferDelegate {
     func captureOutput(_ output: AVCaptureOutput,
                        didOutput sampleBuffer: CMSampleBuffer,
                        from connection: AVCaptureConnection) {
-        guard let buffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        // Convertir a CGImage AQUÍ, síncronamente, ANTES de que el buffer se recicle
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+        guard let cgImage = ciContext.createCGImage(ciImage, from: ciImage.extent) else { return }
+
         DispatchQueue.main.async { [weak self] in
-            self?.pixelBuffer = buffer
+            self?.currentFrame = cgImage
+            self?.frameCount += 1
         }
     }
 }

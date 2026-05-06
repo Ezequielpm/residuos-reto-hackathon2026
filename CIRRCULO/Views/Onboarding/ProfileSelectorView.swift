@@ -1,4 +1,9 @@
 import SwiftUI
+import UIKit
+import AVFoundation
+import AVKit
+
+// MARK: - Perfil de usuario
 
 enum PerfilUsuario: String, CaseIterable {
     case ciudadano    = "Ciudadano"
@@ -11,7 +16,7 @@ enum PerfilUsuario: String, CaseIterable {
         switch self {
         case .ciudadano:    return "leaf.circle.fill"
         case .pepenador:    return "bicycle.circle.fill"
-        case .empresa:      return "building.2.circle.fill"
+        case .empresa:      return "building.2.fill"
         case .puntoAcopio:  return "mappin.circle.fill"
         case .centroAcopio: return "shippingbox.circle.fill"
         }
@@ -48,93 +53,81 @@ enum PerfilUsuario: String, CaseIterable {
     }
 }
 
+// MARK: - Looping Video Player
+
+struct LoopingVideoPlayer: UIViewRepresentable {
+    let videoData: Data
+
+    func makeUIView(context: Context) -> UIView {
+        let view = PlayerUIView(videoData: videoData)
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {}
+}
+
+private class PlayerUIView: UIView {
+    private var playerLayer = AVPlayerLayer()
+    private var player: AVPlayer?
+    private var loopObserver: Any?
+
+    init(videoData: Data) {
+        super.init(frame: .zero)
+
+        // Write data to temp file for AVPlayer
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("LogginVideo_\(UUID().uuidString).mp4")
+        try? videoData.write(to: tempURL)
+
+        let item = AVPlayerItem(url: tempURL)
+        player = AVPlayer(playerItem: item)
+        player?.isMuted = true
+
+        playerLayer.player = player
+        playerLayer.videoGravity = .resizeAspectFill
+        layer.addSublayer(playerLayer)
+
+        // Loop
+        loopObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: item,
+            queue: .main
+        ) { [weak self] _ in
+            self?.player?.seek(to: .zero)
+            self?.player?.play()
+        }
+
+        player?.play()
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        playerLayer.frame = bounds
+    }
+
+    deinit {
+        if let obs = loopObserver {
+            NotificationCenter.default.removeObserver(obs)
+        }
+        player?.pause()
+    }
+}
+
+// MARK: - Profile Selector View
+
 struct ProfileSelectorView: View {
-    @State private var perfilSeleccionado: PerfilUsuario?
-    @State private var aparecieron = false
+    @EnvironmentObject var store: AppDataStore
+    @Environment(AuthManager.self) private var auth
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                // Fondo degradado
-                LinearGradient(
-                    colors: [Color(hex: "#1B5E20"), Color(hex: "#2E7D32"), Color(hex: "#388E3C")],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-
-                // Círculos decorativos
-                Circle()
-                    .fill(.white.opacity(0.05))
-                    .frame(width: 300, height: 300)
-                    .offset(x: -100, y: -180)
-                Circle()
-                    .fill(.white.opacity(0.04))
-                    .frame(width: 200, height: 200)
-                    .offset(x: 150, y: -60)
-                Circle()
-                    .fill(.white.opacity(0.04))
-                    .frame(width: 250, height: 250)
-                    .offset(x: 120, y: 300)
-
-                VStack(spacing: 0) {
-                    // Header
-                    VStack(spacing: 12) {
-                        Image(systemName: "arrow.3.trianglepath")
-                            .font(.system(size: 52, weight: .bold))
-                            .foregroundStyle(.white)
-                            .opacity(aparecieron ? 1 : 0)
-                            .scaleEffect(aparecieron ? 1 : 0.6)
-
-                        Text("CIRRCULO")
-                            .font(.system(size: 34, weight: .black))
-                            .tracking(3)
-                            .foregroundStyle(.white)
-
-                        Text("Economía Circular en México")
-                            .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.75))
-                    }
-                    .padding(.top, 56)
-                    .padding(.bottom, 40)
-
-                    // Tarjetas de perfil
-                    VStack(spacing: 12) {
-                        Text("¿Cómo participas hoy?")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(.white.opacity(0.6))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 4)
-
-                        ForEach(Array(PerfilUsuario.allCases.enumerated()), id: \.element) { index, perfil in
-                            PerfilCard(perfil: perfil) {
-                                perfilSeleccionado = perfil
-                            }
-                            .opacity(aparecieron ? 1 : 0)
-                            .offset(y: aparecieron ? 0 : 30)
-                            .animation(
-                                .spring(response: 0.5, dampingFraction: 0.75)
-                                    .delay(Double(index) * 0.07 + 0.2),
-                                value: aparecieron
-                            )
-                        }
-                    }
-                    .padding(.horizontal, 20)
-
-                    Spacer()
-
-                    Text("Swift Changemakers Hackathon 2026 · Enactus México")
-                        .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.4))
-                        .padding(.bottom, 16)
+        Group {
+            if let usuario = auth.usuarioActual {
+                NavigationStack {
+                    destinoVista(para: usuario.perfil)
                 }
             }
-            .navigationDestination(item: $perfilSeleccionado) { perfil in
-                destinoVista(para: perfil)
-            }
-        }
-        .onAppear {
-            withAnimation { aparecieron = true }
         }
     }
 
@@ -150,54 +143,63 @@ struct ProfileSelectorView: View {
     }
 }
 
-struct PerfilCard: View {
+// MARK: - Glass Profile Card
+
+struct ProfileCardGlass: View {
     let perfil: PerfilUsuario
     let action: () -> Void
     @State private var presionado = false
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 16) {
-                // Ícono con gradiente
+            HStack(spacing: 14) {
+                // Icon
                 ZStack {
-                    LinearGradient(
-                        colors: [perfil.colorSecundario, perfil.colorPrimario],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                    .frame(width: 52, height: 52)
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [perfil.colorSecundario, perfil.colorPrimario],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 44, height: 44)
 
                     Image(systemName: perfil.icono)
-                        .font(.system(size: 26))
+                        .font(.system(size: 22))
                         .foregroundStyle(.white)
                 }
 
-                VStack(alignment: .leading, spacing: 3) {
+                // Text
+                VStack(alignment: .leading, spacing: 2) {
                     Text(perfil.rawValue)
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(Color(hex: "#1B2A1B"))
+                        .foregroundStyle(.white)
                     Text(perfil.descripcion)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.white.opacity(0.5))
                 }
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color(.systemGray3))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.3))
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(.white)
-            .clipShape(RoundedRectangle(cornerRadius: 18))
-            .shadow(color: .black.opacity(0.12), radius: 12, x: 0, y: 4)
+            .padding(.vertical, 13)
+            .background(.ultraThinMaterial.opacity(0.7))
+            .background(Color.white.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(.white.opacity(0.1), lineWidth: 0.5)
+            )
             .scaleEffect(presionado ? 0.97 : 1.0)
         }
         .buttonStyle(.plain)
         .onLongPressGesture(minimumDuration: 0, pressing: { p in
-            withAnimation(.easeInOut(duration: 0.12)) { presionado = p }
+            withAnimation(.easeInOut(duration: 0.1)) { presionado = p }
         }, perform: {})
     }
 }
@@ -205,11 +207,12 @@ struct PerfilCard: View {
 // MARK: - Tab Views
 
 struct CiudadanoTabView: View {
-    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var store: AppDataStore
+    @Environment(AuthManager.self) private var auth
 
     var body: some View {
         TabView {
-            PerfilCiudadanoView(onCambiarPerfil: { dismiss() })
+            PerfilCiudadanoView(onCambiarPerfil: { auth.logout() })
                 .tabItem { Label("Perfil", systemImage: "person.circle.fill") }
             MapaAcopioView()
                 .tabItem { Label("Mapa", systemImage: "map.fill") }
@@ -226,29 +229,50 @@ struct CiudadanoTabView: View {
 }
 
 struct PepenadorTabView: View {
-    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var store: AppDataStore
+    @Environment(AuthManager.self) private var auth
+    @State private var tabActivo: Int = 0
 
     var body: some View {
-        TabView {
-            MapaRutasView()
-                .tabItem { Label("Mapa", systemImage: "map.fill") }
-            EntregaView()
-                .tabItem { Label("Entregar", systemImage: "checkmark.circle.fill") }
-            HistorialPepenadorView(onCambiarPerfil: { dismiss() })
-                .tabItem { Label("Historial", systemImage: "list.bullet.rectangle") }
+        ZStack {
+            TabView(selection: $tabActivo) {
+                MapaRutasView()
+                    .tabItem { Label("Mapa", systemImage: "map.fill") }
+                    .tag(0)
+                EntregaView()
+                    .tabItem { Label("Entregar", systemImage: "checkmark.circle.fill") }
+                    .tag(1)
+                HistorialPepenadorView(onCambiarPerfil: { auth.logout() })
+                    .tabItem { Label("Historial", systemImage: "list.bullet.rectangle") }
+                    .tag(2)
+            }
+            .tint(Color(hex: "#E65100"))
+            .navigationBarHidden(true)
+
+            if let solicitud = store.solicitudNuevaParaPepenador {
+                AlertaRecoleccionView(
+                    solicitud: solicitud,
+                    onAccept: {
+                        store.solicitudNuevaParaPepenador = nil
+                        withAnimation { tabActivo = 1 }
+                    },
+                    onDismiss: {
+                        store.solicitudNuevaParaPepenador = nil
+                    }
+                )
+                .zIndex(100)
+            }
         }
-        .tint(Color(hex: "#E65100"))
-        .navigationBarHidden(true)
     }
 }
 
 struct EmpresaTabView: View {
     @StateObject private var vm = EmpresaViewModel()
-    @Environment(\.dismiss) private var dismiss
+    @Environment(AuthManager.self) private var auth
 
     var body: some View {
         TabView {
-            DashboardEmpresaView(vm: vm)
+            DashboardEmpresaView(vm: vm, onCambiarPerfil: { auth.logout() })
                 .tabItem { Label("Dashboard", systemImage: "chart.bar.fill") }
             ScannerEmpresaView(vm: vm)
                 .tabItem { Label("Escanear", systemImage: "camera.viewfinder") }
@@ -256,7 +280,7 @@ struct EmpresaTabView: View {
                 .tabItem { Label("Ahorro Fiscal", systemImage: "dollarsign.circle.fill") }
             ResumenLegalView(vm: vm)
                 .tabItem { Label("Legal", systemImage: "doc.text.fill") }
-            EquipoView(vm: vm, onCambiarPerfil: { dismiss() })
+            EquipoView(vm: vm, onCambiarPerfil: { auth.logout() })
                 .tabItem { Label("Equipo", systemImage: "person.2.fill") }
         }
         .tint(Color(hex: "#1565C0"))
@@ -265,11 +289,12 @@ struct EmpresaTabView: View {
 }
 
 struct PuntoAcopioTabView: View {
-    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var store: AppDataStore
+    @Environment(AuthManager.self) private var auth
 
     var body: some View {
         TabView {
-            PanelContenedoresView(onCambiarPerfil: { dismiss() })
+            PanelContenedoresView(onCambiarPerfil: { auth.logout() })
                 .tabItem { Label("Panel", systemImage: "trash.fill") }
             QREstaticoView()
                 .tabItem { Label("Mi QR", systemImage: "qrcode") }
@@ -280,11 +305,12 @@ struct PuntoAcopioTabView: View {
 }
 
 struct CentroAcopioTabView: View {
-    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var store: AppDataStore
+    @Environment(AuthManager.self) private var auth
 
     var body: some View {
         TabView {
-            ConfirmarRecepcionView(onCambiarPerfil: { dismiss() })
+            ConfirmarRecepcionView(onCambiarPerfil: { auth.logout() })
                 .tabItem { Label("Recepciones", systemImage: "shippingbox.fill") }
             PreciosMaterialView()
                 .tabItem { Label("Precios", systemImage: "tag.fill") }
@@ -307,4 +333,7 @@ extension Color {
     }
 }
 
-#Preview { ProfileSelectorView() }
+#Preview {
+    ProfileSelectorView()
+        .environment(AuthManager.shared)
+}

@@ -2,7 +2,8 @@ import SwiftUI
 import CoreImage.CIFilterBuiltins
 
 struct QREstaticoView: View {
-    @State private var punto = MockDataService.shared.puntosAcopio[0]
+    @EnvironmentObject var store: AppDataStore
+    private var punto: PuntoAcopio { store.puntosAcopio[store.miPuntoAcopioIndex] }
     @State private var aparecio = false
 
     private var qrImage: Image {

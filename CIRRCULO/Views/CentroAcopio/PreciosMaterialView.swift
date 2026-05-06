@@ -1,7 +1,8 @@
 import SwiftUI
 
 struct PreciosMaterialView: View {
-    @State private var centro = MockDataService.shared.centrosAcopio[0]
+    @EnvironmentObject var store: AppDataStore
+    private var centro: CentroAcopio { store.centrosAcopio[store.miCentroAcopioIndex] }
     @State private var preciosEditados: [TipoResiduo: String] = [:]
     @State private var modoEdicion = false
     @State private var guardado = false
@@ -29,7 +30,7 @@ struct PreciosMaterialView: View {
                                     if modoEdicion {
                                         for (tipo, valorStr) in preciosEditados {
                                             if let valor = Double(valorStr) {
-                                                centro.preciosMaterial[tipo] = valor
+                                                store.centrosAcopio[store.miCentroAcopioIndex].preciosMaterial[tipo] = valor
                                             }
                                         }
                                         preciosEditados = [:]
@@ -101,6 +102,10 @@ struct PreciosMaterialView: View {
             }
             .ignoresSafeArea(edges: .top)
             .navigationBarHidden(true)
+            .scrollDismissesKeyboard(.interactively)
+            .onTapGesture {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
         }
     }
 }

@@ -2,34 +2,33 @@ import SwiftUI
 import AVFoundation
 
 struct DepositView: View {
-    @State private var materialesTicket: [TipoResiduo: Double] = [
-        .plasticoPET: 1.0,
-        .carton: 2.5,
-        .aluminio: 0.3
-    ]
+    @EnvironmentObject var store: AppDataStore
     @State private var modoVerificacion = false
     @State private var depositoVerificado = false
     @State private var mostrarMapa = false
+    @State private var puntosGanados = 0
 
     private var totalPuntos: Int {
-        materialesTicket.reduce(0) { $0 + Int($1.value * Double($1.key.puntosPorKg)) }
+        store.ticketPuntosEstimados
     }
 
     var body: some View {
         NavigationStack {
             Group {
                 if depositoVerificado {
-                    CelebracionView(puntos: totalPuntos)
+                    CelebracionView(puntos: puntosGanados)
                 } else if modoVerificacion {
-                    VerificacionQRView(onVerificado: {
+                    VerificacionQRView(onVerificado: { puntoId in
+                        puntosGanados = totalPuntos
+                        store.depositarEnPunto(puntoAcopioId: puntoId)
                         withAnimation(.spring()) { depositoVerificado = true }
                     }, onCancelar: {
                         modoVerificacion = false
-                    })
+                    }, puntosAcopio: store.puntosAcopio)
                 } else {
                     ScrollView {
                         TicketView(
-                            materiales: materialesTicket,
+                            materiales: store.ticketActual,
                             totalPuntos: totalPuntos,
                             onIrADepositar: { mostrarMapa = true },
                             onVerificarEnPunto: { modoVerificacion = true }
@@ -41,13 +40,26 @@ struct DepositView: View {
             .navigationTitle(modoVerificacion ? "Verificar depósito" : "Depositar")
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $mostrarMapa) {
-                MapaAcopioView()
+                NavigationStack {
+                    MapaAcopioView()
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button {
+                                    mostrarMapa = false
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.title3)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                }
             }
             .toolbar {
-                if !depositoVerificado && !modoVerificacion && !materialesTicket.isEmpty {
+                if !depositoVerificado && !modoVerificacion && !store.ticketActual.isEmpty {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
-                            materialesTicket = [:]
+                            store.ticketActual = [:]
                         } label: {
                             Label("Limpiar", systemImage: "trash")
                         }
@@ -207,16 +219,15 @@ struct MaterialRow: View {
 // MARK: - Verificación QR
 
 struct VerificacionQRView: View {
-    let onVerificado: () -> Void
+    let onVerificado: (UUID) -> Void
     let onCancelar: () -> Void
+    let puntosAcopio: [PuntoAcopio]
     @State private var qrDetectado = false
-    @State private var nombrePunto = ""
-    @State private var mostrarCamaraFoto = false
+    @State private var puntoSeleccionado: PuntoAcopio?
     @State private var procesando = false
 
     var body: some View {
         VStack(spacing: 0) {
-            // Simulación de scanner QR (el scanner real usaría AVMetadataObject)
             ZStack {
                 Color.black.ignoresSafeArea()
 
@@ -224,7 +235,6 @@ struct VerificacionQRView: View {
                     Spacer()
 
                     if !qrDetectado {
-                        // Estado: esperando QR
                         VStack(spacing: 20) {
                             Image(systemName: "qrcode.viewfinder")
                                 .font(.system(size: 80))
@@ -235,29 +245,39 @@ struct VerificacionQRView: View {
                                 .foregroundStyle(.white)
                                 .multilineTextAlignment(.center)
 
-                            // Para el hackathon: botón que simula escaneo exitoso
-                            Button {
-                                nombrePunto = "Ecocentro Coyoacán"
-                                withAnimation { qrDetectado = true }
-                            } label: {
+                            // Simular escaneo QR con selector de punto
+                            VStack(spacing: 10) {
                                 Text("Simular escaneo QR (demo)")
-                                    .font(.subheadline.bold())
-                                    .padding(.horizontal, 20)
-                                    .padding(.vertical, 12)
-                                    .background(.white.opacity(0.2))
-                                    .foregroundStyle(.white)
-                                    .clipShape(Capsule())
-                                    .overlay(Capsule().stroke(.white.opacity(0.4), lineWidth: 1))
+                                    .font(.caption.bold())
+                                    .foregroundStyle(.white.opacity(0.6))
+
+                                ForEach(puntosAcopio.prefix(3)) { punto in
+                                    Button {
+                                        puntoSeleccionado = punto
+                                        withAnimation { qrDetectado = true }
+                                    } label: {
+                                        HStack(spacing: 8) {
+                                            Image(systemName: "mappin.circle.fill")
+                                            Text(punto.nombre)
+                                                .font(.subheadline.bold())
+                                        }
+                                        .padding(.horizontal, 20)
+                                        .padding(.vertical, 12)
+                                        .background(.white.opacity(0.2))
+                                        .foregroundStyle(.white)
+                                        .clipShape(Capsule())
+                                        .overlay(Capsule().stroke(.white.opacity(0.4), lineWidth: 1))
+                                    }
+                                }
                             }
                         }
-                    } else {
-                        // QR detectado — pedir foto del material
+                    } else if let punto = puntoSeleccionado {
                         VStack(spacing: 20) {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 56))
                                 .foregroundStyle(Color(hex: "#4CAF50"))
 
-                            Text("QR de \(nombrePunto) detectado")
+                            Text("QR de \(punto.nombre) detectado")
                                 .font(.headline)
                                 .foregroundStyle(.white)
 
@@ -271,7 +291,7 @@ struct VerificacionQRView: View {
                                 procesando = true
                                 Task {
                                     try? await Task.sleep(nanoseconds: 1_800_000_000)
-                                    await MainActor.run { onVerificado() }
+                                    await MainActor.run { onVerificado(punto.id) }
                                 }
                             } label: {
                                 if procesando {
@@ -385,4 +405,5 @@ struct CelebracionView: View {
 
 #Preview {
     DepositView()
+        .environmentObject(AppDataStore())
 }

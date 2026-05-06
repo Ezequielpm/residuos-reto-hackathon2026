@@ -2,7 +2,8 @@ import SwiftUI
 import MapKit
 
 struct MapaAcopioView: View {
-    @State private var puntos = MockDataService.shared.puntosAcopio
+    @EnvironmentObject var store: AppDataStore
+    private var puntos: [PuntoAcopio] { store.puntosAcopio }
     @State private var puntoSeleccionado: PuntoAcopio?
     @State private var position = MapCameraPosition.region(
         MKCoordinateRegion(

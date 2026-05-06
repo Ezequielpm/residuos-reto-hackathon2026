@@ -2,7 +2,7 @@ import SwiftUI
 import MapKit
 
 struct MapaRutasView: View {
-    @State private var solicitudes = MockDataService.shared.solicitudesRecoleccion
+    @EnvironmentObject var store: AppDataStore
     @State private var seleccionada: SolicitudRecoleccion?
     @State private var position = MapCameraPosition.region(
         MKCoordinateRegion(
@@ -11,14 +11,16 @@ struct MapaRutasView: View {
         )
     )
 
+    private var solicitudes: [SolicitudRecoleccion] { store.solicitudes }
     private var disponibles: Int { solicitudes.filter { $0.estado == .disponible }.count }
+    private var reclamadas: Int { solicitudes.filter { $0.reclamadaPor == store.currentUserId }.count }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
+        ZStack(alignment: .top) {
             Map(position: $position) {
                 ForEach(solicitudes) { solicitud in
                     Annotation("", coordinate: solicitud.puntoAcopio.coordenadas) {
-                        SolicitudPinV2(solicitud: solicitud)
+                        SolicitudPin(solicitud: solicitud, esMia: solicitud.reclamadaPor == store.currentUserId)
                             .onTapGesture { seleccionada = solicitud }
                     }
                 }
@@ -27,24 +29,22 @@ struct MapaRutasView: View {
             .mapStyle(.standard(elevation: .realistic))
             .ignoresSafeArea()
 
-            // Barra superior
-            VStack {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Rutas disponibles")
-                            .font(.title3.bold())
-                        Text("\(disponibles) solicitudes activas")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    ZStack {
-                        Circle()
-                            .fill(disponibles > 0 ? Color(hex: "#E65100") : Color(.systemGray5))
-                            .frame(width: 40, height: 40)
-                        Text("\(disponibles)")
-                            .font(.headline.bold())
-                            .foregroundStyle(.white)
+            // Barra superior con stats
+            VStack(spacing: 0) {
+                VStack(spacing: 12) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Recolecciones")
+                                .font(.title3.bold())
+                            Text(store.currentUserName)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        HStack(spacing: 12) {
+                            StatPill(valor: "\(disponibles)", label: "abiertas", color: Color(hex: "#E65100"))
+                            StatPill(valor: "\(reclamadas)", label: "tuyas", color: Color(hex: "#4CAF50"))
+                        }
                     }
                 }
                 .padding(.horizontal, 20)
@@ -54,19 +54,21 @@ struct MapaRutasView: View {
                 .shadow(color: .black.opacity(0.1), radius: 8, y: 3)
                 .padding(.horizontal, 16)
                 .padding(.top, 60)
-                Spacer()
-            }
 
-            // Leyenda
-            HStack(spacing: 16) {
-                LeyendaItem(color: Color(hex: "#E65100"), texto: "Disponible")
-                LeyendaItem(color: Color(.systemGray3), texto: "Reclamada")
+                Spacer()
+
+                // Leyenda
+                HStack(spacing: 16) {
+                    LeyendaItem(color: Color(hex: "#E65100"), texto: "Disponible")
+                    LeyendaItem(color: Color(hex: "#4CAF50"), texto: "Tuya")
+                    LeyendaItem(color: Color(.systemGray3), texto: "Reclamada")
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(.regularMaterial)
+                .clipShape(Capsule())
+                .padding(.bottom, 100)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(.regularMaterial)
-            .clipShape(Capsule())
-            .padding(.bottom, 100)
         }
         .sheet(item: $seleccionada) { solicitud in
             DetallePuntoView(
@@ -82,38 +84,52 @@ struct MapaRutasView: View {
     }
 
     private func reclamar(_ solicitud: SolicitudRecoleccion) {
-        if let idx = solicitudes.firstIndex(where: { $0.id == solicitud.id }) {
-            solicitudes[idx].estado = .reclamada
-            solicitudes[idx].reclamadaPor = "pepenador-demo-01"
-        }
+        store.reclamarSolicitud(solicitud.id)
         seleccionada = nil
     }
 }
 
-struct SolicitudPinV2: View {
+// MARK: - Pin mejorado
+
+struct SolicitudPin: View {
     let solicitud: SolicitudRecoleccion
+    var esMia: Bool = false
+
     private var disponible: Bool { solicitud.estado == .disponible }
+
+    private var pinColor: LinearGradient {
+        if esMia {
+            return LinearGradient(colors: [Color(hex: "#66BB6A"), Color(hex: "#2E7D32")],
+                                  startPoint: .topLeading, endPoint: .bottomTrailing)
+        } else if disponible {
+            return LinearGradient(colors: [Color(hex: "#FF7043"), Color(hex: "#E65100")],
+                                  startPoint: .topLeading, endPoint: .bottomTrailing)
+        } else {
+            return LinearGradient(colors: [Color(.systemGray4), Color(.systemGray3)],
+                                  startPoint: .top, endPoint: .bottom)
+        }
+    }
+
+    private var triangleColor: Color {
+        if esMia { return Color(hex: "#2E7D32") }
+        else if disponible { return Color(hex: "#E65100") }
+        else { return Color(.systemGray3) }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             ZStack {
-                // Sombra
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(.black.opacity(0.15))
-                    .frame(width: 68, height: 52)
+                    .fill(.black.opacity(0.12))
+                    .frame(width: 72, height: 54)
                     .offset(y: 3)
                     .blur(radius: 4)
 
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(disponible
-                          ? LinearGradient(colors: [Color(hex: "#FF7043"), Color(hex: "#E65100")],
-                                           startPoint: .topLeading, endPoint: .bottomTrailing)
-                          : LinearGradient(colors: [Color(.systemGray4), Color(.systemGray3)],
-                                           startPoint: .top, endPoint: .bottom)
-                    )
-                    .frame(width: 68, height: 52)
+                    .fill(pinColor)
+                    .frame(width: 72, height: 54)
 
-                VStack(spacing: 1) {
+                VStack(spacing: 2) {
                     Text(String(format: "%.0f kg", solicitud.kgEstimados))
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(.white)
@@ -123,11 +139,31 @@ struct SolicitudPinV2: View {
                 }
             }
 
-            // Puntero
             Triangle()
-                .fill(disponible ? Color(hex: "#E65100") : Color(.systemGray3))
+                .fill(triangleColor)
                 .frame(width: 12, height: 7)
         }
+    }
+}
+
+struct StatPill: View {
+    let valor: String
+    let label: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(valor)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(color)
+            Text(label)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(color.opacity(0.1))
+        .clipShape(Capsule())
     }
 }
 
@@ -154,4 +190,4 @@ struct LeyendaItem: View {
     }
 }
 
-#Preview { MapaRutasView() }
+#Preview { MapaRutasView().environmentObject(AppDataStore()) }

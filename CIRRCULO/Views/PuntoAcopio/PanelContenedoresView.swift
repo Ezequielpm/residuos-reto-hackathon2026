@@ -1,25 +1,46 @@
 import SwiftUI
 
 struct PanelContenedoresView: View {
+    @EnvironmentObject var store: AppDataStore
     var onCambiarPerfil: (() -> Void)? = nil
-    @State private var punto = MockDataService.shared.puntosAcopio[0]
     @State private var solicitudEnviada = false
     @State private var animado = false
 
-    private var porcentajeVerde: Double { 0.45 }
-    private var porcentajeGris: Double {
-        let total = punto.materialDisponible.values.reduce(0, +)
-        return min(total / punto.capacidadTotal, 1.0)
+    private var punto: PuntoAcopio { store.puntosAcopio[store.miPuntoAcopioIndex] }
+
+    /// Calcula porcentaje por contenedor sumando los materiales que corresponden
+    private var porcentajeVerde: Double {
+        let organicos = ["Orgánico - comida", "Orgánico - poda"]
+        let kgOrganicos = punto.materialDisponible.filter { organicos.contains($0.key) }.values.reduce(0, +)
+        return min(kgOrganicos / (punto.capacidadTotal * 0.33), 1.0)
     }
-    private var porcentajeNaranja: Double { 0.22 }
+
+    private var porcentajeGris: Double {
+        let organicos = ["Orgánico - comida", "Orgánico - poda"]
+        let noReciclables = ["No reciclable", "Electrónico", "Textil"]
+        let kgReciclables = punto.materialDisponible
+            .filter { !organicos.contains($0.key) && !noReciclables.contains($0.key) }
+            .values.reduce(0, +)
+        return min(kgReciclables / (punto.capacidadTotal * 0.5), 1.0)
+    }
+
+    private var porcentajeNaranja: Double {
+        let noReciclables = ["No reciclable", "Electrónico", "Textil"]
+        let kgNoReciclables = punto.materialDisponible.filter { noReciclables.contains($0.key) }.values.reduce(0, +)
+        return min(kgNoReciclables / (punto.capacidadTotal * 0.17), 1.0)
+    }
+
     private var necesitaRecoleccion: Bool { porcentajeGris > 0.7 || porcentajeVerde > 0.7 }
+    private var depositosHoy: [DepositoTicket] {
+        store.historialDepositos.filter { $0.puntoAcopioId == punto.id }.prefix(5).map { $0 }
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 0) {
                     // Header
-                    PanelContenedoresHeader(punto: punto, onCambiarPerfil: onCambiarPerfil)
+                    PanelContenedoresHeader(punto: punto, depositosCount: depositosHoy.count, onCambiarPerfil: onCambiarPerfil)
 
                     VStack(spacing: 20) {
                         // Contenedores
@@ -57,6 +78,7 @@ struct PanelContenedoresView: View {
                         // Alerta recolección
                         if necesitaRecoleccion {
                             Button {
+                                store.solicitarRecoleccion(puntoAcopioId: punto.id)
                                 withAnimation(.spring()) { solicitudEnviada = true }
                             } label: {
                                 HStack {
@@ -92,11 +114,18 @@ struct PanelContenedoresView: View {
                                           color: Color(hex: "#6A1B9A"))
 
                             VStack(spacing: 0) {
-                                ForEach(Array(MockDataService.shared.historialDepositos.prefix(3).enumerated()), id: \.offset) { idx, ticket in
+                                let depositos = Array(depositosHoy.prefix(5))
+                                ForEach(Array(depositos.enumerated()), id: \.offset) { idx, ticket in
                                     DepositoHoyRow(ticket: ticket)
-                                    if idx < 2 {
+                                    if idx < depositos.count - 1 {
                                         Divider().padding(.horizontal, 16)
                                     }
+                                }
+                                if depositos.isEmpty {
+                                    Text("Sin depósitos hoy")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                        .padding(20)
                                 }
                             }
                             .background(Color(.systemBackground))
@@ -122,6 +151,7 @@ struct PanelContenedoresView: View {
 
 struct PanelContenedoresHeader: View {
     let punto: PuntoAcopio
+    var depositosCount: Int = 0
     var onCambiarPerfil: (() -> Void)? = nil
 
     var body: some View {
@@ -151,8 +181,8 @@ struct PanelContenedoresHeader: View {
                         if let onCambiarPerfil {
                             Button(action: onCambiarPerfil) {
                                 HStack(spacing: 4) {
-                                    Image(systemName: "arrow.2.circlepath").font(.caption2.bold())
-                                    Text("Cambiar").font(.caption2.bold())
+                                    Image(systemName: "rectangle.portrait.and.arrow.right").font(.caption2.bold())
+                                    Text("Salir").font(.caption2.bold())
                                 }
                                 .foregroundStyle(.white.opacity(0.9))
                                 .padding(.horizontal, 10)
@@ -167,7 +197,7 @@ struct PanelContenedoresHeader: View {
                 HStack(spacing: 0) {
                     PanelStat(valor: "3", label: "contenedores")
                     Divider().frame(width: 1, height: 32).background(.white.opacity(0.3))
-                    PanelStat(valor: "12", label: "depósitos hoy")
+                    PanelStat(valor: "\(depositosCount)", label: "depósitos hoy")
                     Divider().frame(width: 1, height: 32).background(.white.opacity(0.3))
                     PanelStat(valor: "\(String(format: "%.0f", punto.capacidadTotal)) kg", label: "capacidad")
                 }
@@ -296,4 +326,5 @@ struct DepositoHoyRow: View {
 
 #Preview {
     PanelContenedoresView()
+        .environmentObject(AppDataStore())
 }

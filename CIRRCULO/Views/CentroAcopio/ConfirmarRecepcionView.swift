@@ -1,15 +1,14 @@
 import SwiftUI
 
 struct ConfirmarRecepcionView: View {
+    @EnvironmentObject var store: AppDataStore
     var onCambiarPerfil: (() -> Void)? = nil
-    @State private var recepciones = recepcionesEjemplo
-    @State private var confirmadas: Set<UUID> = []
 
     private var pendientes: [RecepcionPendiente] {
-        recepciones.filter { !confirmadas.contains($0.id) }
+        store.recepcionesPendientes.filter { !store.recepcionesConfirmadas.contains($0.id) }
     }
     private var yaConfirmadas: [RecepcionPendiente] {
-        recepciones.filter { confirmadas.contains($0.id) }
+        store.recepcionesPendientes.filter { store.recepcionesConfirmadas.contains($0.id) }
     }
 
     private var totalHoy: Double {
@@ -27,6 +26,7 @@ struct ConfirmarRecepcionView: View {
                         pendientesCount: pendientes.count,
                         confirmadasCount: yaConfirmadas.count,
                         totalHoy: totalHoy,
+                        nombreCentro: store.miCentroAcopio?.nombre ?? "Centro de Acopio",
                         onCambiarPerfil: onCambiarPerfil
                     )
 
@@ -42,7 +42,7 @@ struct ConfirmarRecepcionView: View {
                                     ForEach(pendientes) { r in
                                         RecepcionCard(recepcion: r, confirmada: false) {
                                             withAnimation(.spring()) {
-                                                _ = confirmadas.insert(r.id)
+                                                store.confirmarRecepcion(r.id)
                                             }
                                         }
                                     }
@@ -96,6 +96,7 @@ struct RecepcionesHeader: View {
     let pendientesCount: Int
     let confirmadasCount: Int
     let totalHoy: Double
+    var nombreCentro: String = "Centro de Acopio"
     var onCambiarPerfil: (() -> Void)? = nil
 
     var body: some View {
@@ -113,7 +114,7 @@ struct RecepcionesHeader: View {
                         Text("Recepciones")
                             .font(.title2.bold())
                             .foregroundStyle(.white)
-                        Text("Centro de Acopio Sur")
+                        Text(nombreCentro)
                             .font(.subheadline)
                             .foregroundStyle(.white.opacity(0.75))
                     }
@@ -125,8 +126,8 @@ struct RecepcionesHeader: View {
                         if let onCambiarPerfil {
                             Button(action: onCambiarPerfil) {
                                 HStack(spacing: 4) {
-                                    Image(systemName: "arrow.2.circlepath").font(.caption2.bold())
-                                    Text("Cambiar").font(.caption2.bold())
+                                    Image(systemName: "rectangle.portrait.and.arrow.right").font(.caption2.bold())
+                                    Text("Salir").font(.caption2.bold())
                                 }
                                 .foregroundStyle(.white.opacity(0.9))
                                 .padding(.horizontal, 10)
@@ -275,12 +276,7 @@ struct RecepcionCard: View {
     }
 }
 
-private let recepcionesEjemplo: [RecepcionPendiente] = [
-    RecepcionPendiente(id: UUID(), pepenador: "Javier M.",  origen: "Ecocentro Coyoacán",      materiales: [("Aluminio", 3.2), ("Plástico PET", 8.5)], timestamp: Date().addingTimeInterval(-1800)),
-    RecepcionPendiente(id: UUID(), pepenador: "Rosa G.",    origen: "Punto Verde Roma Norte",  materiales: [("Vidrio", 43.5), ("Cartón", 12.0)],       timestamp: Date().addingTimeInterval(-3600)),
-    RecepcionPendiente(id: UUID(), pepenador: "Manuel T.",  origen: "Reciclaje Condesa",       materiales: [("Plástico PET", 18.2), ("Aluminio", 2.1)], timestamp: Date().addingTimeInterval(-5400))
-]
-
 #Preview {
     ConfirmarRecepcionView()
+        .environmentObject(AppDataStore())
 }
