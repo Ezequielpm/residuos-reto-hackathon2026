@@ -16,7 +16,13 @@ struct DepositView: View {
         NavigationStack {
             Group {
                 if depositoVerificado {
-                    CelebracionView(puntos: puntosGanados)
+                    CelebracionView(puntos: puntosGanados, onListo: {
+                        withAnimation {
+                            depositoVerificado = false
+                            modoVerificacion = false
+                            puntosGanados = 0
+                        }
+                    })
                 } else if modoVerificacion {
                     VerificacionQRView(onVerificado: { puntoId in
                         puntosGanados = totalPuntos
@@ -719,6 +725,7 @@ final class QRScannerViewController: UIViewController, AVCaptureMetadataOutputOb
 
 struct CelebracionView: View {
     let puntos: Int
+    let onListo: () -> Void
     @State private var escala: CGFloat = 0.5
     @State private var opacidad: Double = 0
     @State private var particulas = false
@@ -773,6 +780,25 @@ struct CelebracionView: View {
                 .opacity(opacidad)
 
             Spacer()
+
+            Button(action: onListo) {
+                Text("Listo")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(hex: "#388E3C"), Color(hex: "#2E7D32")],
+                            startPoint: .leading, endPoint: .trailing
+                        )
+                    )
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .shadow(color: Color(hex: "#2E7D32").opacity(0.3), radius: 8, y: 4)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 32)
+            .opacity(opacidad)
         }
         .onAppear {
             withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
