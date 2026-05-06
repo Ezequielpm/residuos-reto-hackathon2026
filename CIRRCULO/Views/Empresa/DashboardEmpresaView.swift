@@ -233,7 +233,7 @@ struct SolicitarRecoleccionPanel: View {
             Button(action: onSolicitar) {
                 HStack {
                     Image(systemName: "paperplane.fill")
-                    Text("Solicitar recolección de pepenador")
+                    Text("Solicitar recolección")
                         .font(.headline)
                 }
                 .frame(maxWidth: .infinity)
