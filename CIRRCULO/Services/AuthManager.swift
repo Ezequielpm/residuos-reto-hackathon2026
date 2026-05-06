@@ -41,6 +41,8 @@ final class AuthManager {
         DemoUser(id: Usuario.idCarmen,    nombre: "Carmen Ruiz",       email: "carmen@nexia.mx",   perfil: .puntoAcopio),
         DemoUser(id: Usuario.idRicardo,   nombre: "Ricardo Flores",    email: "ricardo@nexia.mx",  perfil: .centroAcopio),
         DemoUser(id: Usuario.idElena,     nombre: "Elena Ortiz",       email: "elena@nexia.mx",    perfil: .centroAcopio),
+        DemoUser(id: Usuario.idOxxoManager,  nombre: "OXXO Roma Norte", email: "oxxo1@nexia.mx",   perfil: .oxxo),
+        DemoUser(id: Usuario.idOxxoManager2, nombre: "OXXO Condesa",   email: "oxxo2@nexia.mx",    perfil: .oxxo),
     ]
 
     /// Password de todos los usuarios demo

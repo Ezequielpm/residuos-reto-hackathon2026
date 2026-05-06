@@ -44,6 +44,8 @@
 		E75B03062A88A29337914D56 /* MockDataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F6E89E20120DB67E5C02AB6 /* MockDataService.swift */; };
 		F74C24173263E41EDB043D52 /* EmpresaViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 804F948071A6155AA94CE807 /* EmpresaViewModel.swift */; };
 		FBA6779DA457D2DD659E9B79 /* FoundationModelsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C58765472841866168B2243 /* FoundationModelsService.swift */; };
+		AA1111110000000000000001 /* PanelOxxoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2222220000000000000001 /* PanelOxxoView.swift */; };
+		AA1111110000000000000002 /* QREstaticoOxxoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2222220000000000000002 /* QREstaticoOxxoView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -86,6 +88,8 @@
 		F24815E79A0A1FA20943D958 /* ConfirmarRecepcionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfirmarRecepcionView.swift; sourceTree = "<group>"; };
 		FEFAABDD21637DBEF8F11542 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		FF87761B5CDBFEFC556378DE /* AhorroFiscalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AhorroFiscalView.swift; sourceTree = "<group>"; };
+		AA2222220000000000000001 /* PanelOxxoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelOxxoView.swift; sourceTree = "<group>"; };
+		AA2222220000000000000002 /* QREstaticoOxxoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QREstaticoOxxoView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -149,10 +153,20 @@
 				CC88BAD7BC646136FB811E34 /* Ciudadano */,
 				1C4CACF27398CBF9C3DB4032 /* Empresa */,
 				775179DFD427FD372EEFA1B1 /* Onboarding */,
+				AA3333330000000000000001 /* Oxxo */,
 				6B01CDA868A64BE0DBF0436F /* Pepenador */,
 				EB0F7B3067889DBAA78F13DB /* PuntoAcopio */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		AA3333330000000000000001 /* Oxxo */ = {
+			isa = PBXGroup;
+			children = (
+				AA2222220000000000000001 /* PanelOxxoView.swift */,
+				AA2222220000000000000002 /* QREstaticoOxxoView.swift */,
+			);
+			path = Oxxo;
 			sourceTree = "<group>";
 		};
 		623C06AE40E01F51D8366DCA /* CentroAcopio */ = {
@@ -355,6 +369,8 @@
 				7ECE25BA8D699B327FDEBB76 /* ResumenLegalView.swift in Sources */,
 				07C9300F98B8831F4A28B969 /* ScannerEmpresaView.swift in Sources */,
 				100D7126C4B95C6F9F93FBF8 /* ScannerView.swift in Sources */,
+				AA1111110000000000000001 /* PanelOxxoView.swift in Sources */,
+				AA1111110000000000000002 /* QREstaticoOxxoView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

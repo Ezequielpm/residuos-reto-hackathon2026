@@ -13,14 +13,20 @@ struct MapaAcopioView: View {
     )
 
     private var disponibles: Int { puntos.filter { $0.porcentajeCapacidad < 0.75 }.count }
+    private var oxxoCount: Int { puntos.filter { $0.esOxxo }.count }
 
     var body: some View {
         ZStack(alignment: .bottom) {
             Map(position: $position) {
                 ForEach(puntos) { punto in
                     Annotation("", coordinate: punto.coordenadas) {
-                        PuntoAcopioPin(punto: punto)
-                            .onTapGesture { puntoSeleccionado = punto }
+                        if punto.esOxxo {
+                            OxxoPin()
+                                .onTapGesture { puntoSeleccionado = punto }
+                        } else {
+                            PuntoAcopioPin(punto: punto)
+                                .onTapGesture { puntoSeleccionado = punto }
+                        }
                     }
                 }
                 UserAnnotation()
@@ -34,7 +40,7 @@ struct MapaAcopioView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Puntos de Acopio")
                             .font(.title3.bold())
-                        Text("\(disponibles) con espacio disponible")
+                        Text("\(disponibles) disponibles · \(oxxoCount) OXXO aliados")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -59,10 +65,18 @@ struct MapaAcopioView: View {
             }
 
             // Leyenda
-            HStack(spacing: 16) {
+            HStack(spacing: 12) {
                 LeyendaItemVerde(color: Color(hex: "#4CAF50"), texto: "Disponible")
                 LeyendaItemVerde(color: Color(hex: "#F9A825"), texto: "Medio lleno")
                 LeyendaItemVerde(color: Color(hex: "#FF5722"), texto: "Lleno")
+                HStack(spacing: 4) {
+                    Image(systemName: "storefront.fill")
+                        .font(.caption2)
+                        .foregroundStyle(Color(hex: "#D50000"))
+                    Text("OXXO")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -71,9 +85,43 @@ struct MapaAcopioView: View {
             .padding(.bottom, 100)
         }
         .sheet(item: $puntoSeleccionado) { punto in
-            DetallePuntoAcopioSheet(punto: punto)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+            if punto.esOxxo {
+                DetalleOxxoSheet(punto: punto)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            } else {
+                DetallePuntoAcopioSheet(punto: punto)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
+        }
+    }
+}
+
+// MARK: - Oxxo Pin
+
+struct OxxoPin: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                Circle()
+                    .fill(.black.opacity(0.15))
+                    .frame(width: 46, height: 46)
+                    .offset(y: 3)
+                    .blur(radius: 4)
+
+                Circle()
+                    .fill(Color(hex: "#D50000"))
+                    .frame(width: 44, height: 44)
+
+                Image(systemName: "storefront.fill")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+
+            Triangle()
+                .fill(Color(hex: "#D50000"))
+                .frame(width: 10, height: 6)
         }
     }
 }
@@ -127,7 +175,168 @@ struct LeyendaItemVerde: View {
     }
 }
 
-// MARK: - Sheet Detalle
+// MARK: - Sheet Detalle OXXO
+
+struct DetalleOxxoSheet: View {
+    let punto: PuntoAcopio
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                // Imagen del OXXO
+                if let imagenAsset = punto.imagenAsset {
+                    Image(imagenAsset)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(height: 200)
+                        .clipped()
+                        .overlay(alignment: .topTrailing) {
+                            Text("Punto de Acopio Aliado")
+                                .font(.caption.bold())
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Color(hex: "#D50000"))
+                                .clipShape(Capsule())
+                                .padding(12)
+                        }
+                }
+
+                // Cabecera
+                VStack(spacing: 12) {
+                    HStack(spacing: 14) {
+                        ZStack {
+                            Circle().fill(Color(hex: "#D50000").opacity(0.15)).frame(width: 48, height: 48)
+                            Image(systemName: "storefront.fill")
+                                .font(.system(size: 22))
+                                .foregroundStyle(Color(hex: "#D50000"))
+                        }
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(punto.nombre)
+                                .font(.title3.bold())
+                            Label(punto.direccion, systemImage: "location.fill")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+
+                    // Descripción
+                    if let descripcion = punto.descripcionLugar {
+                        Text(descripcion)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.leading)
+                            .padding(.vertical, 4)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+
+                // Materiales aceptados
+                if !punto.materialDisponible.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        SectionHeader(titulo: "Materiales que aceptamos",
+                                      icono: "shippingbox.fill",
+                                      color: Color(hex: "#D50000"))
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(Array(punto.materialDisponible.keys), id: \.self) { mat in
+                                    HStack(spacing: 5) {
+                                        Circle()
+                                            .fill(Color(hex: "#D50000"))
+                                            .frame(width: 6, height: 6)
+                                        Text(mat)
+                                            .font(.caption.bold())
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(Color(hex: "#FFEBEE"))
+                                    .clipShape(Capsule())
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                        }
+                    }
+                    .padding(.top, 16)
+                }
+
+                // Promociones
+                if !punto.promociones.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        SectionHeader(titulo: "Promociones por reciclar",
+                                      icono: "tag.fill",
+                                      color: Color(hex: "#D50000"))
+
+                        VStack(spacing: 8) {
+                            ForEach(punto.promociones, id: \.self) { promo in
+                                HStack(alignment: .top, spacing: 10) {
+                                    Image(systemName: "gift.fill")
+                                        .font(.caption)
+                                        .foregroundStyle(Color(hex: "#D50000"))
+                                        .frame(width: 20)
+                                    Text(promo)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.primary)
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 10)
+                                .background(Color(hex: "#FFF8E1"))
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+                    .padding(.top, 16)
+                }
+
+                // Mensaje motivacional
+                HStack(spacing: 10) {
+                    Image(systemName: "figure.walk")
+                        .font(.title2)
+                        .foregroundStyle(Color(hex: "#2E7D32"))
+                    Text("Siempre hay un OXXO a la vuelta de la esquina. No hay excusa para no reciclar.")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(Color(hex: "#1B5E20"))
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity)
+                .background(Color(hex: "#E8F5E9"))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+
+                // Botón llegar
+                Link(destination: URL(string: "maps://?daddr=\(punto.latitud),\(punto.longitud)")!) {
+                    HStack {
+                        Image(systemName: "arrow.triangle.turn.up.right.circle.fill")
+                        Text("Cómo llegar")
+                            .font(.headline)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(hex: "#D50000"), Color(hex: "#B71C1C")],
+                            startPoint: .leading, endPoint: .trailing
+                        )
+                    )
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .shadow(color: Color(hex: "#D50000").opacity(0.3), radius: 8, y: 4)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 32)
+            }
+        }
+        .ignoresSafeArea(edges: .top)
+    }
+}
+
+// MARK: - Sheet Detalle Punto de Acopio
 
 struct DetallePuntoAcopioSheet: View {
     let punto: PuntoAcopio

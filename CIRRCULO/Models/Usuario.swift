@@ -50,6 +50,8 @@ final class Usuario {
     static let idCarmen   = UUID(uuidString: "D5000000-0000-0000-0000-000000000002")! // Op. Punto Verde Roma
     static let idRicardo  = UUID(uuidString: "D6000000-0000-0000-0000-000000000001")! // Op. Centro Sur
     static let idElena    = UUID(uuidString: "D6000000-0000-0000-0000-000000000002")! // Op. Acopio Oriente
+    static let idOxxoManager = UUID(uuidString: "D7000000-0000-0000-0000-000000000001")! // Op. OXXO Roma Norte
+    static let idOxxoManager2 = UUID(uuidString: "D7000000-0000-0000-0000-000000000002")! // Op. OXXO Condesa
 
     func verificarPassword(_ password: String) -> Bool {
         return Usuario.hashPassword(password) == self.passwordHash

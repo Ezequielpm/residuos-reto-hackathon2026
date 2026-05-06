@@ -98,6 +98,54 @@ final class MockDataService {
         )
     ]
 
+    // MARK: - Oxxos como Puntos de Acopio
+
+    private let oxxoPromociones = [
+        "Lleva 2 botellas PET y recibe un café americano GRATIS",
+        "Acumula 5 visitas de reciclaje y obtén un 2x1 en snacks",
+        "Deposita latas de aluminio y gana puntos SPIN PREMIA dobles",
+        "Por cada kg de cartón recibe $5 de saldo para recargas",
+        "Recicla y participa en el sorteo mensual de $500 en monedero"
+    ]
+
+    private let oxxoDescripcion = "OXXO se suma a la economía circular como punto de acopio aliado de Nexia. Deposita tus materiales reciclables (PET, aluminio, cartón) en el contenedor ubicado dentro de la tienda y acumula puntos canjeables por productos. Siempre hay un OXXO a la vuelta de la esquina — reciclar nunca fue tan fácil."
+
+    private func makeOxxo(id: String, nombre: String, direccion: String, lat: Double, lng: Double) -> PuntoAcopio {
+        PuntoAcopio(
+            id: UUID(uuidString: id)!,
+            nombre: nombre,
+            direccion: direccion,
+            latitud: lat,
+            longitud: lng,
+            qrCode: "CIRRCULO-PUNTO-\(id)",
+            materialDisponible: ["Plástico PET": Double.random(in: 2...8), "Aluminio": Double.random(in: 1...5), "Cartón": Double.random(in: 3...10)],
+            capacidadTotal: 80.0,
+            activo: true,
+            esOxxo: true,
+            imagenAsset: "Oxxo1",
+            promociones: oxxoPromociones,
+            descripcionLugar: oxxoDescripcion
+        )
+    }
+
+    lazy var oxxos: [PuntoAcopio] = [
+        makeOxxo(id: "B1000000-0000-0000-0000-000000000001", nombre: "OXXO Roma Norte",       direccion: "Av. Álvaro Obregón 110, Roma Norte, CDMX",         lat: 19.4195, lng: -99.1620),
+        makeOxxo(id: "B2000000-0000-0000-0000-000000000002", nombre: "OXXO Condesa",           direccion: "Av. Tamaulipas 120, Condesa, CDMX",                lat: 19.4115, lng: -99.1735),
+        makeOxxo(id: "B3000000-0000-0000-0000-000000000003", nombre: "OXXO Polanco",           direccion: "Av. Presidente Masaryk 201, Polanco, CDMX",        lat: 19.4335, lng: -99.1940),
+        makeOxxo(id: "B4000000-0000-0000-0000-000000000004", nombre: "OXXO Coyoacán",          direccion: "Av. Universidad 1700, Coyoacán, CDMX",             lat: 19.3480, lng: -99.1590),
+        makeOxxo(id: "B5000000-0000-0000-0000-000000000005", nombre: "OXXO Del Valle",         direccion: "Av. Insurgentes Sur 700, Del Valle, CDMX",          lat: 19.3870, lng: -99.1710),
+        makeOxxo(id: "B6000000-0000-0000-0000-000000000006", nombre: "OXXO Tlalpan",           direccion: "Calzada de Tlalpan 1520, Tlalpan, CDMX",           lat: 19.3200, lng: -99.1440),
+        makeOxxo(id: "B7000000-0000-0000-0000-000000000007", nombre: "OXXO Narvarte",          direccion: "Av. Diagonal de San Antonio 1005, Narvarte, CDMX",  lat: 19.3990, lng: -99.1560),
+        makeOxxo(id: "B8000000-0000-0000-0000-000000000008", nombre: "OXXO Doctores",          direccion: "Dr. Lavista 130, Doctores, CDMX",                  lat: 19.4180, lng: -99.1470),
+        makeOxxo(id: "B9000000-0000-0000-0000-000000000009", nombre: "OXXO Santa Fe",          direccion: "Av. Vasco de Quiroga 3800, Santa Fe, CDMX",         lat: 19.3660, lng: -99.2610),
+        makeOxxo(id: "BA000000-0000-0000-0000-00000000000A", nombre: "OXXO Reforma",           direccion: "Paseo de la Reforma 222, Juárez, CDMX",             lat: 19.4280, lng: -99.1620),
+        makeOxxo(id: "BB000000-0000-0000-0000-00000000000B", nombre: "OXXO Xochimilco",        direccion: "Av. División del Norte 3100, Xochimilco, CDMX",     lat: 19.2950, lng: -99.1070),
+        makeOxxo(id: "BC000000-0000-0000-0000-00000000000C", nombre: "OXXO Iztapalapa",        direccion: "Ermita Iztapalapa 1820, Iztapalapa, CDMX",          lat: 19.3580, lng: -99.0830),
+        makeOxxo(id: "BD000000-0000-0000-0000-00000000000D", nombre: "OXXO Azcapotzalco",      direccion: "Av. Azcapotzalco 440, Azcapotzalco, CDMX",         lat: 19.4870, lng: -99.1860),
+        makeOxxo(id: "BE000000-0000-0000-0000-00000000000E", nombre: "OXXO Tacuba",            direccion: "Calzada México-Tacuba 800, Tacuba, CDMX",           lat: 19.4580, lng: -99.1780),
+        makeOxxo(id: "BF000000-0000-0000-0000-00000000000F", nombre: "OXXO Zócalo",            direccion: "Av. 20 de Noviembre 52, Centro, CDMX",              lat: 19.4330, lng: -99.1340)
+    ]
+
     // MARK: - Solicitudes de Recolección
 
     lazy var solicitudesRecoleccion: [SolicitudRecoleccion] = [

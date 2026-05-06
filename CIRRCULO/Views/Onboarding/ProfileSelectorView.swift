@@ -11,6 +11,7 @@ enum PerfilUsuario: String, CaseIterable {
     case empresa      = "Empresa"
     case puntoAcopio  = "Punto de Acopio"
     case centroAcopio = "Centro de Acopio"
+    case oxxo         = "OXXO"
 
     var icono: String {
         switch self {
@@ -19,6 +20,7 @@ enum PerfilUsuario: String, CaseIterable {
         case .empresa:      return "building.2.fill"
         case .puntoAcopio:  return "mappin.circle.fill"
         case .centroAcopio: return "shippingbox.circle.fill"
+        case .oxxo:         return "storefront.circle.fill"
         }
     }
 
@@ -29,6 +31,7 @@ enum PerfilUsuario: String, CaseIterable {
         case .empresa:      return Color(hex: "#1565C0")
         case .puntoAcopio:  return Color(hex: "#6A1B9A")
         case .centroAcopio: return Color(hex: "#AD1457")
+        case .oxxo:         return Color(hex: "#D50000")
         }
     }
 
@@ -39,6 +42,7 @@ enum PerfilUsuario: String, CaseIterable {
         case .empresa:      return Color(hex: "#42A5F5")
         case .puntoAcopio:  return Color(hex: "#AB47BC")
         case .centroAcopio: return Color(hex: "#EC407A")
+        case .oxxo:         return Color(hex: "#FF5252")
         }
     }
 
@@ -49,6 +53,7 @@ enum PerfilUsuario: String, CaseIterable {
         case .empresa:      return "Gestiona residuos y ahorra impuestos"
         case .puntoAcopio:  return "Administra tu punto de acopio"
         case .centroAcopio: return "Gestiona recepciones y precios"
+        case .oxxo:         return "Gestiona reciclaje en tu tienda"
         }
     }
 }
@@ -139,6 +144,7 @@ struct ProfileSelectorView: View {
         case .empresa:      EmpresaTabView()
         case .puntoAcopio:  PuntoAcopioTabView()
         case .centroAcopio: CentroAcopioTabView()
+        case .oxxo:         OxxoTabView()
         }
     }
 }
@@ -316,6 +322,22 @@ struct CentroAcopioTabView: View {
                 .tabItem { Label("Precios", systemImage: "tag.fill") }
         }
         .tint(Color(hex: "#AD1457"))
+        .navigationBarHidden(true)
+    }
+}
+
+struct OxxoTabView: View {
+    @EnvironmentObject var store: AppDataStore
+    @Environment(AuthManager.self) private var auth
+
+    var body: some View {
+        TabView {
+            PanelOxxoView(onCambiarPerfil: { auth.logout() })
+                .tabItem { Label("Mi Tienda", systemImage: "storefront.fill") }
+            QREstaticoOxxoView()
+                .tabItem { Label("Mi QR", systemImage: "qrcode") }
+        }
+        .tint(Color(hex: "#D50000"))
         .navigationBarHidden(true)
     }
 }

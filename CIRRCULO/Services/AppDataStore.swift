@@ -26,7 +26,7 @@ final class AppDataStore: ObservableObject {
 
     init() {
         let mock = MockDataService.shared
-        self.puntosAcopio = mock.puntosAcopio
+        self.puntosAcopio = mock.puntosAcopio + mock.oxxos
         self.solicitudes = mock.solicitudesRecoleccion
         self.historialDepositos = mock.historialDepositos
         self.centrosAcopio = mock.centrosAcopio
@@ -59,6 +59,12 @@ final class AppDataStore: ObservableObject {
         Usuario.idElena:   UUID(uuidString: "C2000000-0000-0000-0000-000000000002")!, // Acopio Oriente
     ]
 
+    /// Qué OXXO opera cada usuario
+    static let oxxoAsignado: [UUID: UUID] = [
+        Usuario.idOxxoManager:  UUID(uuidString: "B1000000-0000-0000-0000-000000000001")!, // OXXO Roma Norte
+        Usuario.idOxxoManager2: UUID(uuidString: "B2000000-0000-0000-0000-000000000002")!, // OXXO Condesa
+    ]
+
     /// Retorna el punto asignado al operador actual
     var miPuntoAcopio: PuntoAcopio? {
         guard let userId = AuthManager.shared.usuarioActual?.id,
@@ -83,6 +89,23 @@ final class AppDataStore: ObservableObject {
         guard let userId = AuthManager.shared.usuarioActual?.id,
               let centroId = Self.centroAsignado[userId] else { return 0 }
         return centrosAcopio.firstIndex { $0.id == centroId } ?? 0
+    }
+
+    /// Retorna el OXXO asignado al operador actual
+    var miOxxo: PuntoAcopio? {
+        guard let userId = AuthManager.shared.usuarioActual?.id,
+              let oxxoId = Self.oxxoAsignado[userId] else {
+            return puntosAcopio.first { $0.esOxxo }
+        }
+        return puntosAcopio.first { $0.id == oxxoId }
+    }
+
+    var miOxxoIndex: Int {
+        guard let userId = AuthManager.shared.usuarioActual?.id,
+              let oxxoId = Self.oxxoAsignado[userId] else {
+            return puntosAcopio.firstIndex { $0.esOxxo } ?? 0
+        }
+        return puntosAcopio.firstIndex { $0.id == oxxoId } ?? 0
     }
 
     // MARK: - Datos filtrados por usuario

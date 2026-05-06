@@ -109,6 +109,10 @@ struct PuntoAcopio: Identifiable, Codable {
     var materialDisponible: [String: Double]
     var capacidadTotal: Double
     var activo: Bool
+    var esOxxo: Bool = false
+    var imagenAsset: String? = nil
+    var promociones: [String] = []
+    var descripcionLugar: String? = nil
 
     var coordenadas: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitud, longitude: longitud)
