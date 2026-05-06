@@ -186,7 +186,7 @@ struct AlertaRecoleccionView: View {
                 Button(action: aceptar) {
                     HStack(spacing: 8) {
                         Image(systemName: "arrow.triangle.turn.up.right.circle.fill")
-                        Text("Aceptar viaje")
+                        Text("Aceptar recolección")
                             .font(.headline)
                     }
                     .frame(maxWidth: .infinity)
@@ -247,7 +247,7 @@ struct AlertaRecoleccionView: View {
                     .foregroundStyle(Color(hex: "#4CAF50"))
             }
 
-            Text("¡Viaje aceptado!")
+            Text("¡Recolección aceptada!")
                 .font(.title2.bold())
                 .foregroundStyle(Color(hex: "#1B5E20"))
 

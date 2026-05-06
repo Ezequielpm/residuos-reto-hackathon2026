@@ -549,7 +549,7 @@ struct ConfirmacionEntregaView: View {
                 Text("$\(String(format: "%.0f", ingresos))")
                     .font(.system(size: 56, weight: .black))
                     .foregroundStyle(Color(hex: "#E65100"))
-                Text("MXN del viaje")
+                Text("MXN del traslado")
                     .font(.title3)
                     .foregroundStyle(.secondary)
             }
