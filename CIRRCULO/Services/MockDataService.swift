@@ -148,7 +148,9 @@ final class MockDataService {
 
     // MARK: - Solicitudes de Recolección
 
-    lazy var solicitudesRecoleccion: [SolicitudRecoleccion] = [
+    lazy var solicitudesRecoleccion: [SolicitudRecoleccion] = solicitudesPuntosTradicionales + generarSolicitudesOxxo()
+
+    private lazy var solicitudesPuntosTradicionales: [SolicitudRecoleccion] = [
         SolicitudRecoleccion(
             id: UUID(),
             puntoAcopio: puntosAcopio[0],
@@ -222,6 +224,31 @@ final class MockDataService {
             estado: .reclamada
         )
     ]
+
+    private func generarSolicitudesOxxo() -> [SolicitudRecoleccion] {
+        oxxos.enumerated().map { (idx, oxxo) in
+            let kgTotal = oxxo.materialDisponible.values.reduce(0, +)
+            let materialesPrincipales: [TipoResiduo] = oxxo.materialDisponible.compactMap { key, _ in
+                TipoResiduo.allCases.first { $0.rawValue == key }
+            }
+            let valor = oxxo.materialDisponible.reduce(0.0) { acc, entry in
+                let tipo = TipoResiduo.allCases.first { $0.rawValue == entry.key }
+                return acc + entry.value * (tipo?.valorMercado ?? 1.0)
+            }
+            let reclamada = idx == 4 || idx == 9
+            let reclamante = idx == 4 ? Usuario.idBeto.uuidString : Usuario.idRosa.uuidString
+            return SolicitudRecoleccion(
+                id: UUID(),
+                puntoAcopio: oxxo,
+                kgEstimados: kgTotal,
+                valorEstimado: valor,
+                materialesPrincipales: Array(materialesPrincipales.prefix(3)),
+                timestampPublicacion: Date().addingTimeInterval(Double(-300 - idx * 600)),
+                reclamadaPor: reclamada ? reclamante : nil,
+                estado: reclamada ? .reclamada : .disponible
+            )
+        }
+    }
 
     // MARK: - Historial Depósitos (distribuidos entre María y Jorge)
 
