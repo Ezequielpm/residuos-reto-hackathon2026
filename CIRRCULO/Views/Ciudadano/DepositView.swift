@@ -222,102 +222,63 @@ struct VerificacionQRView: View {
     let onVerificado: (UUID) -> Void
     let onCancelar: () -> Void
     let puntosAcopio: [PuntoAcopio]
-    @State private var qrDetectado = false
-    @State private var puntoSeleccionado: PuntoAcopio?
+    @State private var puntoDetectado: PuntoAcopio?
     @State private var procesando = false
+    @State private var mensajeError: String?
 
     var body: some View {
-        VStack(spacing: 0) {
-            ZStack {
-                Color.black.ignoresSafeArea()
+        ZStack {
+            Color.black.ignoresSafeArea()
 
+            if let punto = puntoDetectado {
                 VStack(spacing: 24) {
                     Spacer()
 
-                    if !qrDetectado {
-                        VStack(spacing: 20) {
-                            Image(systemName: "qrcode.viewfinder")
-                                .font(.system(size: 80))
-                                .foregroundStyle(.white)
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 56))
+                        .foregroundStyle(Color(hex: "#4CAF50"))
 
-                            Text("Apunta al código QR del punto de acopio")
-                                .font(.headline)
-                                .foregroundStyle(.white)
-                                .multilineTextAlignment(.center)
+                    Text("QR de \(punto.nombre) detectado")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
 
-                            // Simular escaneo QR con selector de punto
-                            VStack(spacing: 10) {
-                                Text("Simular escaneo QR (demo)")
-                                    .font(.caption.bold())
-                                    .foregroundStyle(.white.opacity(0.6))
+                    Text("Ahora toma una foto del material que estás depositando para verificar")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
 
-                                ForEach(puntosAcopio.prefix(3)) { punto in
-                                    Button {
-                                        puntoSeleccionado = punto
-                                        withAnimation { qrDetectado = true }
-                                    } label: {
-                                        HStack(spacing: 8) {
-                                            Image(systemName: "mappin.circle.fill")
-                                            Text(punto.nombre)
-                                                .font(.subheadline.bold())
-                                        }
-                                        .padding(.horizontal, 20)
-                                        .padding(.vertical, 12)
-                                        .background(.white.opacity(0.2))
-                                        .foregroundStyle(.white)
-                                        .clipShape(Capsule())
-                                        .overlay(Capsule().stroke(.white.opacity(0.4), lineWidth: 1))
-                                    }
-                                }
-                            }
+                    Button {
+                        procesando = true
+                        Task {
+                            try? await Task.sleep(nanoseconds: 1_800_000_000)
+                            await MainActor.run { onVerificado(punto.id) }
                         }
-                    } else if let punto = puntoSeleccionado {
-                        VStack(spacing: 20) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 56))
-                                .foregroundStyle(Color(hex: "#4CAF50"))
-
-                            Text("QR de \(punto.nombre) detectado")
-                                .font(.headline)
-                                .foregroundStyle(.white)
-
-                            Text("Ahora toma una foto del material que estás depositando para verificar")
-                                .font(.subheadline)
-                                .foregroundStyle(.white.opacity(0.8))
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 32)
-
-                            Button {
-                                procesando = true
-                                Task {
-                                    try? await Task.sleep(nanoseconds: 1_800_000_000)
-                                    await MainActor.run { onVerificado(punto.id) }
-                                }
-                            } label: {
-                                if procesando {
-                                    HStack(spacing: 10) {
-                                        ProgressView().tint(.white)
-                                        Text("Verificando con IA...")
-                                    }
-                                    .font(.headline)
-                                    .padding(.horizontal, 28)
-                                    .padding(.vertical, 14)
-                                    .background(Color(hex: "#388E3C"))
-                                    .foregroundStyle(.white)
-                                    .clipShape(Capsule())
-                                } else {
-                                    Label("Tomar foto del material", systemImage: "camera.fill")
-                                        .font(.headline)
-                                        .padding(.horizontal, 28)
-                                        .padding(.vertical, 14)
-                                        .background(Color(hex: "#388E3C"))
-                                        .foregroundStyle(.white)
-                                        .clipShape(Capsule())
-                                }
+                    } label: {
+                        if procesando {
+                            HStack(spacing: 10) {
+                                ProgressView().tint(.white)
+                                Text("Verificando con IA...")
                             }
-                            .disabled(procesando)
+                            .font(.headline)
+                            .padding(.horizontal, 28)
+                            .padding(.vertical, 14)
+                            .background(Color(hex: "#388E3C"))
+                            .foregroundStyle(.white)
+                            .clipShape(Capsule())
+                        } else {
+                            Label("Tomar foto del material", systemImage: "camera.fill")
+                                .font(.headline)
+                                .padding(.horizontal, 28)
+                                .padding(.vertical, 14)
+                                .background(Color(hex: "#388E3C"))
+                                .foregroundStyle(.white)
+                                .clipShape(Capsule())
                         }
                     }
+                    .disabled(procesando)
 
                     Spacer()
 
@@ -327,8 +288,196 @@ struct VerificacionQRView: View {
                     }
                     .padding(.bottom, 32)
                 }
+            } else {
+                QRScannerRepresentable { codigo in handleDetection(codigo) }
+                    .ignoresSafeArea()
+
+                QRScannerOverlay(mensajeError: mensajeError, onCancelar: onCancelar)
             }
         }
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: puntoDetectado?.id)
+    }
+
+    private func handleDetection(_ codigo: String) {
+        guard puntoDetectado == nil else { return }
+        let prefijoValido = codigo.hasPrefix("NEXIA-PUNTO-") || codigo.hasPrefix("CIRRCULO-PUNTO-")
+        guard prefijoValido, let punto = puntosAcopio.first(where: { $0.qrCode == codigo }) else {
+            withAnimation { mensajeError = "Código no reconocido. Apunta al QR de un punto de acopio Nexia." }
+            return
+        }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        puntoDetectado = punto
+    }
+}
+
+// MARK: - Scanner overlay (retícula + instrucciones)
+
+struct QRScannerOverlay: View {
+    let mensajeError: String?
+    let onCancelar: () -> Void
+    @State private var lineaY: CGFloat = -110
+
+    var body: some View {
+        VStack {
+            VStack(spacing: 8) {
+                Label("Escanea el QR del punto de acopio", systemImage: "qrcode.viewfinder")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.white)
+                Text("Acerca la cámara al código pegado en el contenedor")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.75))
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background(.black.opacity(0.55))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .padding(.horizontal, 20)
+            .padding(.top, 60)
+
+            Spacer()
+
+            // Retícula
+            ZStack {
+                RoundedRectangle(cornerRadius: 24)
+                    .stroke(.white.opacity(0.85), lineWidth: 3)
+                    .frame(width: 240, height: 240)
+
+                ForEach(0..<4) { idx in
+                    EsquinaRetícula()
+                        .stroke(Color(hex: "#4CAF50"), lineWidth: 5)
+                        .frame(width: 32, height: 32)
+                        .rotationEffect(.degrees(Double(idx) * 90))
+                        .offset(
+                            x: idx == 1 || idx == 2 ? 104 : -104,
+                            y: idx >= 2 ? 104 : -104
+                        )
+                }
+
+                Rectangle()
+                    .fill(LinearGradient(colors: [.clear, Color(hex: "#4CAF50"), .clear],
+                                         startPoint: .leading, endPoint: .trailing))
+                    .frame(width: 220, height: 2)
+                    .offset(y: lineaY)
+                    .onAppear {
+                        withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
+                            lineaY = 110
+                        }
+                    }
+            }
+
+            Spacer()
+
+            if let mensajeError {
+                Text(mensajeError)
+                    .font(.caption.bold())
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(Color(hex: "#D32F2F").opacity(0.9))
+                    .clipShape(Capsule())
+                    .padding(.bottom, 12)
+                    .transition(.opacity)
+            }
+
+            Button(action: onCancelar) {
+                Text("Cancelar")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 28)
+                    .padding(.vertical, 12)
+                    .background(.black.opacity(0.55))
+                    .clipShape(Capsule())
+            }
+            .padding(.bottom, 32)
+        }
+    }
+}
+
+struct EsquinaRetícula: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.midY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.midX, y: rect.minY))
+        return path
+    }
+}
+
+// MARK: - QR Scanner real (AVCaptureMetadataOutput)
+
+struct QRScannerRepresentable: UIViewControllerRepresentable {
+    let onDetectado: (String) -> Void
+
+    func makeUIViewController(context: Context) -> QRScannerViewController {
+        let vc = QRScannerViewController()
+        vc.onDetectado = onDetectado
+        return vc
+    }
+
+    func updateUIViewController(_ uiViewController: QRScannerViewController, context: Context) {}
+}
+
+final class QRScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
+    var onDetectado: ((String) -> Void)?
+    private let captureSession = AVCaptureSession()
+    private var previewLayer: AVCaptureVideoPreviewLayer?
+    private var ultimoCodigo: String?
+    private var ultimaDeteccion = Date.distantPast
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .black
+        configurarSesion()
+    }
+
+    private func configurarSesion() {
+        guard let device = AVCaptureDevice.default(for: .video),
+              let input = try? AVCaptureDeviceInput(device: device),
+              captureSession.canAddInput(input) else { return }
+        captureSession.addInput(input)
+
+        let output = AVCaptureMetadataOutput()
+        guard captureSession.canAddOutput(output) else { return }
+        captureSession.addOutput(output)
+        output.setMetadataObjectsDelegate(self, queue: .main)
+        output.metadataObjectTypes = [.qr]
+
+        let layer = AVCaptureVideoPreviewLayer(session: captureSession)
+        layer.videoGravity = .resizeAspectFill
+        layer.frame = view.bounds
+        view.layer.addSublayer(layer)
+        previewLayer = layer
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            self?.captureSession.startRunning()
+        }
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        previewLayer?.frame = view.bounds
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        if captureSession.isRunning {
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                self?.captureSession.stopRunning()
+            }
+        }
+    }
+
+    func metadataOutput(_ output: AVCaptureMetadataOutput,
+                        didOutput metadataObjects: [AVMetadataObject],
+                        from connection: AVCaptureConnection) {
+        guard let obj = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
+              let codigo = obj.stringValue else { return }
+        // Throttle: ignora repeticiones del mismo código en ráfaga
+        if codigo == ultimoCodigo, Date().timeIntervalSince(ultimaDeteccion) < 1.5 { return }
+        ultimoCodigo = codigo
+        ultimaDeteccion = Date()
+        onDetectado?(codigo)
     }
 }
 
