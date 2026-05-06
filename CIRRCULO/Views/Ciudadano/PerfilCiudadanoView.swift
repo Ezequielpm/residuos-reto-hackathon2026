@@ -85,6 +85,8 @@ struct PerfilCiudadanoView: View {
                             MaterialesSection(materiales: kgPorMaterial)
                         }
 
+                        EducacionCiudadanoSection()
+
                         HistorialCiudadanoSection(historial: historial)
                     }
                     .padding(.top, 20)
@@ -838,6 +840,179 @@ struct TicketRowMejorado: View {
         case .verde:   return Color(hex: "#4CAF50")
         case .gris:    return Color(hex: "#607D8B")
         case .naranja: return Color(hex: "#FF5722")
+        }
+    }
+}
+
+// MARK: - Educación
+
+private struct TemaEducativo: Identifiable {
+    let id = UUID()
+    let titulo: String
+    let icono: String
+    let color: Color
+    let resumen: String
+    let contenido: String
+}
+
+struct EducacionCiudadanoSection: View {
+    @State private var expandido: UUID?
+
+    private let temas: [TemaEducativo] = [
+        TemaEducativo(
+            titulo: "Los 3 contenedores NADF-024",
+            icono: "trash.circle.fill",
+            color: Color(hex: "#2E7D32"),
+            resumen: "Aprende a separar correctamente: orgánicos, reciclables y no reciclables.",
+            contenido: """
+            **Verde — Orgánicos**
+            Restos de comida, cáscaras, hojas y poda. Evita huesos grandes, grasas y aceites.
+
+            **Gris — Inorgánicos reciclables**
+            Plástico (PET, HDPE), papel, cartón, vidrio, aluminio, latas y Tetra Pak limpios y secos.
+
+            **Naranja — No reciclables**
+            Pañales, toallas sanitarias, papel sucio, unicel contaminado y colillas.
+            """
+        ),
+        TemaEducativo(
+            titulo: "Días de recolección en CDMX",
+            icono: "calendar",
+            color: Color(hex: "#388E3C"),
+            resumen: "El camión pasa en días específicos según el contenedor.",
+            contenido: """
+            **Verde (Orgánicos)**
+            Martes, Jueves y Sábado.
+
+            **Gris y Naranja (Inorgánicos)**
+            Lunes, Miércoles, Viernes y Domingo.
+
+            Saca tu basura ya separada antes de las 8:00 AM.
+            """
+        ),
+        TemaEducativo(
+            titulo: "Prepara tus materiales",
+            icono: "drop.fill",
+            color: Color(hex: "#43A047"),
+            resumen: "Pequeños pasos que multiplican el valor de lo que reciclas.",
+            contenido: """
+            **PET y plásticos**
+            Enjuaga, retira la etiqueta si puedes y aplástalos para ahorrar espacio.
+
+            **Cartón y papel**
+            Mantenlos secos y aplánalos. El cartón mojado pierde valor.
+
+            **Vidrio**
+            Enjuaga; las tapas van por separado. Separa por color cuando sea posible.
+
+            **Latas y aluminio**
+            Enjuaga y aplasta. El aluminio limpio puede valer hasta $22/kg.
+            """
+        ),
+        TemaEducativo(
+            titulo: "Errores comunes",
+            icono: "exclamationmark.triangle.fill",
+            color: Color(hex: "#FF8F00"),
+            resumen: "Evita estos descuidos que contaminan la cadena de reciclaje.",
+            contenido: """
+            • Tirar pizza con grasa al cartón limpio: contamina todo el lote.
+            • Mezclar pilas con la basura: van a un punto de acopio especial.
+            • Dejar líquidos en envases: pueden rechazar el camión completo.
+            • Confundir unicel limpio con contaminado: el sucio va al naranja.
+            • Olvidar enjuagar envases con grasa o residuos.
+            """
+        )
+    ]
+
+    var body: some View {
+        VStack(spacing: 14) {
+            SectionHeaderCiudadano(titulo: "Aprende a reciclar",
+                                   icono: "graduationcap.fill",
+                                   color: Color(hex: "#2E7D32"))
+
+            VStack(spacing: 0) {
+                ForEach(Array(temas.enumerated()), id: \.element.id) { idx, tema in
+                    TemaEducativoFila(
+                        tema: tema,
+                        expandido: expandido == tema.id
+                    ) {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                            expandido = (expandido == tema.id) ? nil : tema.id
+                        }
+                    }
+                    if idx < temas.count - 1 {
+                        Divider().padding(.leading, 64)
+                    }
+                }
+            }
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 18))
+            .shadow(color: .black.opacity(0.06), radius: 8, y: 3)
+            .padding(.horizontal, 20)
+        }
+    }
+}
+
+private struct TemaEducativoFila: View {
+    let tema: TemaEducativo
+    let expandido: Bool
+    let onTap: () -> Void
+
+    private var contenidoFormateado: AttributedString {
+        let opciones = AttributedString.MarkdownParsingOptions(
+            interpretedSyntax: .inlineOnlyPreservingWhitespace
+        )
+        if let attr = try? AttributedString(markdown: tema.contenido, options: opciones) {
+            return attr
+        }
+        return AttributedString(tema.contenido)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Button(action: onTap) {
+                HStack(spacing: 14) {
+                    Image(systemName: tema.icono)
+                        .font(.title3)
+                        .foregroundStyle(tema.color)
+                        .frame(width: 40, height: 40)
+                        .background(tema.color.opacity(0.15))
+                        .clipShape(Circle())
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(tema.titulo)
+                            .font(.subheadline.bold())
+                            .foregroundStyle(.primary)
+                            .multilineTextAlignment(.leading)
+                        Text(tema.resumen)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(2)
+                    }
+
+                    Spacer(minLength: 8)
+
+                    Image(systemName: "chevron.down")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(expandido ? 180 : 0))
+                }
+                .padding(16)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if expandido {
+                Text(contenidoFormateado)
+                    .font(.footnote)
+                    .foregroundStyle(.primary.opacity(0.85))
+                    .lineSpacing(4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
     }
 }
