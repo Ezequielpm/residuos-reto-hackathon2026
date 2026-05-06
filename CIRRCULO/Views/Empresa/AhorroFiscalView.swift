@@ -196,7 +196,7 @@ struct AhorroFiscalView: View {
     }
 
     private let pasos = [
-        "Registra y clasifica tus residuos con CIRRCULO",
+        "Registra y clasifica tus residuos con Nexia",
         "Exporta el reporte de cumplimiento NADF-024",
         "Preséntalo ante SEDEMA para obtener la reducción",
         "Aplica el ahorro en tu declaración mensual de nómina"

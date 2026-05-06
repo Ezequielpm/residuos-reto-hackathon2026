@@ -64,10 +64,6 @@ struct PerfilCiudadanoView: View {
                 VStack(spacing: 0) {
                     HeaderPerfilCiudadano(
                         nombreUsuario: store.currentUserName,
-                        puntos: totalPuntos,
-                        kg: totalKg,
-                        co2: co2Evitado,
-                        racha: rachaActual,
                         nivelNombre: nivelActual.nombre,
                         nivelIcono: nivelActual.icono,
                         progresoNivel: progresoNivel,
@@ -75,18 +71,23 @@ struct PerfilCiudadanoView: View {
                         onCambiarPerfil: onCambiarPerfil
                     )
 
-                    VStack(spacing: 28) {
+                    VStack(spacing: 24) {
+                        // Wallet — única fuente de puntos
+                        WalletSection(puntos: totalPuntos)
+
+                        // Recompensas
+                        RecompensasWalletSection(cupones: cupones, puntosActuales: totalPuntos)
+
+                        // Impacto — única fuente de kg/CO2/racha
                         ImpactoSection(kg: totalKg, co2: co2Evitado, racha: rachaActual)
 
                         if !kgPorMaterial.isEmpty {
                             MaterialesSection(materiales: kgPorMaterial)
                         }
 
-                        CuponesSection(cupones: cupones, puntosActuales: totalPuntos, puntosParaSiguiente: puntosParaSiguiente)
-
                         HistorialCiudadanoSection(historial: historial)
                     }
-                    .padding(.top, 28)
+                    .padding(.top, 20)
                     .padding(.bottom, 44)
                 }
             }
@@ -96,22 +97,16 @@ struct PerfilCiudadanoView: View {
     }
 }
 
-// MARK: - Header
+// MARK: - Header (compacto: perfil + nivel, sin datos repetidos)
 
 struct HeaderPerfilCiudadano: View {
     let nombreUsuario: String
-    let puntos: Int
-    let kg: Double
-    let co2: Double
-    let racha: Int
     let nivelNombre: String
     let nivelIcono: String
     let progresoNivel: Double
     let puntosParaSiguiente: Int
     var onCambiarPerfil: (() -> Void)? = nil
 
-    @State private var animado = false
-    @State private var puntosDouble: Double = 0
     @State private var ringProgress: Double = 0
 
     var body: some View {
@@ -123,10 +118,9 @@ struct HeaderPerfilCiudadano: View {
 
             Circle().fill(.white.opacity(0.05)).frame(width: 260).offset(x: 140, y: -50)
             Circle().fill(.white.opacity(0.04)).frame(width: 180).offset(x: -90, y: 30)
-            Circle().fill(.white.opacity(0.03)).frame(width: 120).offset(x: 60, y: -100)
 
             VStack(spacing: 0) {
-                // Top bar: nivel + cambiar perfil
+                // Top bar: nivel + salir
                 HStack {
                     HStack(spacing: 5) {
                         Image(systemName: nivelIcono)
@@ -156,116 +150,73 @@ struct HeaderPerfilCiudadano: View {
                         }
                     }
                 }
-                .padding(.bottom, 22)
-
-                // Avatar con anillo de progreso
-                ZStack {
-                    Circle()
-                        .stroke(.white.opacity(0.15), lineWidth: 5)
-                        .frame(width: 88, height: 88)
-                    Circle()
-                        .trim(from: 0, to: ringProgress)
-                        .stroke(
-                            LinearGradient(
-                                colors: [Color(hex: "#69F0AE"), Color(hex: "#00E676")],
-                                startPoint: .leading, endPoint: .trailing
-                            ),
-                            style: StrokeStyle(lineWidth: 5, lineCap: .round)
-                        )
-                        .frame(width: 88, height: 88)
-                        .rotationEffect(.degrees(-90))
-                    Circle()
-                        .fill(.white.opacity(0.15))
-                        .frame(width: 72, height: 72)
-                    Text(String(nombreUsuario.prefix(1)).uppercased())
-                        .font(.system(size: 30, weight: .bold))
-                        .foregroundStyle(.white)
-                }
-                .padding(.bottom, 8)
-
-                Text(nombreUsuario)
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .padding(.bottom, 12)
-
-                // Puntos animados
-                VStack(spacing: 2) {
-                    Text("\(Int(puntosDouble))")
-                        .font(.system(size: 56, weight: .black))
-                        .foregroundStyle(.white)
-                        .contentTransition(.numericText())
-                        .scaleEffect(animado ? 1 : 0.7)
-                    Text("puntos acumulados")
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.75))
-                }
-                .padding(.bottom, 14)
-
-                // Barra de progreso al siguiente nivel
-                VStack(spacing: 5) {
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            Capsule().fill(.white.opacity(0.2)).frame(height: 6)
-                            Capsule()
-                                .fill(LinearGradient(
-                                    colors: [Color(hex: "#69F0AE"), Color(hex: "#00E676")],
-                                    startPoint: .leading, endPoint: .trailing
-                                ))
-                                .frame(width: geo.size.width * ringProgress, height: 6)
-                        }
-                    }
-                    .frame(height: 6)
-                    HStack {
-                        Text(nivelNombre)
-                            .font(.caption2).foregroundStyle(.white.opacity(0.6))
-                        Spacer()
-                        if puntosParaSiguiente > 0 {
-                            Text("Faltan \(puntosParaSiguiente) pts")
-                                .font(.caption2.bold()).foregroundStyle(.white.opacity(0.75))
-                        } else {
-                            Text("Nivel máximo").font(.caption2.bold()).foregroundStyle(.white.opacity(0.75))
-                        }
-                    }
-                }
                 .padding(.bottom, 18)
 
-                // Stats row
-                HStack(spacing: 0) {
-                    StatBadgeCiudadano(valor: String(format: "%.1f kg", kg), label: "reciclados")
-                    Divider().frame(width: 1, height: 32).background(.white.opacity(0.3))
-                    StatBadgeCiudadano(valor: String(format: "%.1f kg", co2), label: "CO₂ evitados")
-                    Divider().frame(width: 1, height: 32).background(.white.opacity(0.3))
-                    StatBadgeCiudadano(
-                        valor: "\(racha) día\(racha == 1 ? "" : "s")",
-                        label: racha >= 7 ? "racha 🔥🔥" : "racha 🔥"
-                    )
+                // Avatar + nombre + progreso de nivel
+                HStack(spacing: 16) {
+                    ZStack {
+                        Circle()
+                            .stroke(.white.opacity(0.15), lineWidth: 4)
+                            .frame(width: 72, height: 72)
+                        Circle()
+                            .trim(from: 0, to: ringProgress)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [Color(hex: "#69F0AE"), Color(hex: "#00E676")],
+                                    startPoint: .leading, endPoint: .trailing
+                                ),
+                                style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                            )
+                            .frame(width: 72, height: 72)
+                            .rotationEffect(.degrees(-90))
+                        Circle()
+                            .fill(.white.opacity(0.15))
+                            .frame(width: 58, height: 58)
+                        Text(String(nombreUsuario.prefix(1)).uppercased())
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(nombreUsuario)
+                            .font(.title3.bold())
+                            .foregroundStyle(.white)
+
+                        // Barra de progreso al siguiente nivel
+                        VStack(alignment: .leading, spacing: 4) {
+                            GeometryReader { geo in
+                                ZStack(alignment: .leading) {
+                                    Capsule().fill(.white.opacity(0.2)).frame(height: 5)
+                                    Capsule()
+                                        .fill(LinearGradient(
+                                            colors: [Color(hex: "#69F0AE"), Color(hex: "#00E676")],
+                                            startPoint: .leading, endPoint: .trailing
+                                        ))
+                                        .frame(width: geo.size.width * ringProgress, height: 5)
+                                }
+                            }
+                            .frame(height: 5)
+
+                            if puntosParaSiguiente > 0 {
+                                Text("\(puntosParaSiguiente) pts para siguiente nivel")
+                                    .font(.caption2)
+                                    .foregroundStyle(.white.opacity(0.65))
+                            } else {
+                                Text("Nivel máximo alcanzado")
+                                    .font(.caption2)
+                                    .foregroundStyle(Color(hex: "#69F0AE"))
+                            }
+                        }
+                    }
                 }
-                .padding(.vertical, 16)
-                .frame(maxWidth: .infinity)
-                .background(.white.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 16))
             }
             .padding(.horizontal, 24)
             .padding(.top, 60)
-            .padding(.bottom, 28)
+            .padding(.bottom, 24)
         }
         .onAppear {
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.2)) { animado = true }
-            withAnimation(.easeOut(duration: 1.4).delay(0.4)) { puntosDouble = Double(puntos) }
-            withAnimation(.easeOut(duration: 1.2).delay(0.6)) { ringProgress = progresoNivel }
+            withAnimation(.easeOut(duration: 1.0).delay(0.3)) { ringProgress = progresoNivel }
         }
-    }
-}
-
-struct StatBadgeCiudadano: View {
-    let valor: String
-    let label: String
-    var body: some View {
-        VStack(spacing: 3) {
-            Text(valor).font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
-            Text(label).font(.caption2).foregroundStyle(.white.opacity(0.7))
-        }
-        .frame(maxWidth: .infinity)
     }
 }
 
@@ -463,150 +414,339 @@ struct MaterialFilaRow: View {
     }
 }
 
-// MARK: - Sección Cupones
+// MARK: - Wallet Section (tarjeta hero de saldo)
 
-struct CuponesSection: View {
-    let cupones: [Cupon]
-    let puntosActuales: Int
-    let puntosParaSiguiente: Int
+struct WalletSection: View {
+    let puntos: Int
+    @State private var shimmer = false
 
-    private var siguienteCupon: Cupon? {
-        cupones.filter { !$0.canjeado && $0.puntosRequeridos > puntosActuales }
-            .min(by: { $0.puntosRequeridos < $1.puntosRequeridos })
+    private var recompensasCerca: String {
+        if puntos >= 2500 { return "9 recompensas disponibles" }
+        if puntos >= 1200 { return "7 recompensas disponibles" }
+        if puntos >= 500 { return "3 recompensas disponibles" }
+        if puntos >= 150 { return "1 recompensa disponible" }
+        return "Sigue reciclando para desbloquear"
     }
 
     var body: some View {
         VStack(spacing: 14) {
-            SectionHeaderCiudadano(titulo: "Tus recompensas", icono: "ticket.fill", color: Color(hex: "#2E7D32"))
+            SectionHeaderCiudadano(titulo: "Tu wallet", icono: "wallet.bifold.fill", color: Color(hex: "#2E7D32"))
 
-            if let siguiente = siguienteCupon {
-                ProximaRecompensaBanner(cupon: siguiente, puntosActuales: puntosActuales)
-                    .padding(.horizontal, 20)
+            ZStack {
+                // Fondo de tarjeta con gradiente
+                RoundedRectangle(cornerRadius: 22)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color(hex: "#1B5E20"), Color(hex: "#2E7D32"), Color(hex: "#43A047")],
+                            startPoint: .topLeading, endPoint: .bottomTrailing
+                        )
+                    )
+
+                // Efecto shimmer sutil
+                RoundedRectangle(cornerRadius: 22)
+                    .fill(
+                        LinearGradient(
+                            colors: [.clear, .white.opacity(0.08), .clear],
+                            startPoint: .topLeading, endPoint: .bottomTrailing
+                        )
+                    )
+                    .offset(x: shimmer ? 300 : -300)
+
+                // Círculos decorativos
+                Circle().fill(.white.opacity(0.06)).frame(width: 150).offset(x: 120, y: -40)
+                Circle().fill(.white.opacity(0.04)).frame(width: 100).offset(x: -100, y: 30)
+
+                VStack(spacing: 0) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Tus puntos")
+                                .font(.caption)
+                                .foregroundStyle(.white.opacity(0.7))
+                            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                Text("\(puntos)")
+                                    .font(.system(size: 40, weight: .black))
+                                    .foregroundStyle(.white)
+                                Text("pts")
+                                    .font(.headline.bold())
+                                    .foregroundStyle(.white.opacity(0.6))
+                            }
+                        }
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Image(systemName: "leaf.circle.fill")
+                                .font(.system(size: 36))
+                                .foregroundStyle(.white.opacity(0.3))
+                            Text("Nexia")
+                                .font(.caption2.bold())
+                                .foregroundStyle(.white.opacity(0.5))
+                                .tracking(2)
+                        }
+                    }
+
+                    Spacer()
+
+                    // Barra inferior
+                    HStack {
+                        HStack(spacing: 6) {
+                            Image(systemName: "gift.fill")
+                                .foregroundStyle(Color(hex: "#69F0AE"))
+                            Text(recompensasCerca)
+                                .font(.caption.bold())
+                                .foregroundStyle(.white.opacity(0.9))
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption2.bold())
+                            .foregroundStyle(.white.opacity(0.4))
+                    }
+                    .padding(12)
+                    .background(.white.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .padding(20)
             }
+            .frame(height: 175)
+            .clipShape(RoundedRectangle(cornerRadius: 22))
+            .shadow(color: Color(hex: "#1B5E20").opacity(0.35), radius: 16, y: 8)
+            .padding(.horizontal, 20)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 2.5).repeatForever(autoreverses: false)) {
+                    shimmer = true
+                }
+            }
+        }
+    }
+}
 
+// MARK: - Recompensas Wallet Section
+
+struct RecompensasWalletSection: View {
+    let cupones: [Cupon]
+    let puntosActuales: Int
+
+    @State private var categoriaSeleccionada: CuponCategoria? = nil
+
+    private var cuponesFiltrados: [Cupon] {
+        if let cat = categoriaSeleccionada {
+            return cupones.filter { $0.categoria == cat }
+        }
+        return cupones
+    }
+
+    private var disponibles: [Cupon] {
+        cuponesFiltrados.filter { puntosActuales >= $0.puntosRequeridos && !$0.canjeado }
+    }
+    private var proximamente: [Cupon] {
+        cuponesFiltrados.filter { puntosActuales < $0.puntosRequeridos }
+            .sorted { $0.puntosRequeridos < $1.puntosRequeridos }
+    }
+
+    var body: some View {
+        VStack(spacing: 16) {
+            SectionHeaderCiudadano(titulo: "Canjear recompensas", icono: "gift.fill", color: Color(hex: "#2E7D32"))
+
+            // Filtros de categoría
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 14) {
-                    ForEach(cupones) { cupon in
-                        CuponCardV2(cupon: cupon, puntosActuales: puntosActuales)
+                HStack(spacing: 8) {
+                    FilterChip(titulo: "Todas", seleccionado: categoriaSeleccionada == nil) {
+                        withAnimation(.spring(response: 0.3)) { categoriaSeleccionada = nil }
+                    }
+                    ForEach(CuponCategoria.allCases, id: \.self) { cat in
+                        FilterChip(titulo: cat.rawValue, seleccionado: categoriaSeleccionada == cat) {
+                            withAnimation(.spring(response: 0.3)) { categoriaSeleccionada = cat }
+                        }
                     }
                 }
                 .padding(.horizontal, 20)
             }
-        }
-    }
-}
 
-struct ProximaRecompensaBanner: View {
-    let cupon: Cupon
-    let puntosActuales: Int
-    @State private var barraAnimada: Double = 0
+            // Disponibles para canjear
+            if !disponibles.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#00E676")).frame(width: 8, height: 8)
+                        Text("Disponibles ahora")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 20)
 
-    private var progreso: Double { min(1.0, Double(puntosActuales) / Double(cupon.puntosRequeridos)) }
-    private var faltan: Int { max(0, cupon.puntosRequeridos - puntosActuales) }
-
-    var body: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(hex: "#E8F5E9"))
-                    .frame(width: 46, height: 46)
-                Image(systemName: cupon.iconoSF)
-                    .font(.title3)
-                    .foregroundStyle(Color(hex: "#2E7D32"))
-            }
-
-            VStack(alignment: .leading, spacing: 7) {
-                HStack {
-                    Text("Próxima: \(cupon.titulo)")
-                        .font(.subheadline.bold())
-                        .lineLimit(1)
-                    Spacer()
-                    Text("Faltan \(faltan) pts")
-                        .font(.caption.bold())
-                        .foregroundStyle(Color(hex: "#2E7D32"))
-                }
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color(.systemGray5)).frame(height: 6)
-                        Capsule()
-                            .fill(LinearGradient(
-                                colors: [Color(hex: "#81C784"), Color(hex: "#2E7D32")],
-                                startPoint: .leading, endPoint: .trailing
-                            ))
-                            .frame(width: geo.size.width * barraAnimada, height: 6)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 14) {
+                            ForEach(disponibles) { cupon in
+                                RecompensaCard(cupon: cupon, puntosActuales: puntosActuales)
+                            }
+                        }
+                        .padding(.horizontal, 20)
                     }
                 }
-                .frame(height: 6)
             }
-        }
-        .padding(14)
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: .black.opacity(0.06), radius: 6, y: 3)
-        .onAppear {
-            withAnimation(.easeOut(duration: 1.0).delay(0.3)) {
-                barraAnimada = progreso
+
+            // Próximamente
+            if !proximamente.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(.systemGray4)).frame(width: 8, height: 8)
+                        Text("Sigue reciclando para desbloquear")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 20)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 14) {
+                            ForEach(proximamente) { cupon in
+                                RecompensaCard(cupon: cupon, puntosActuales: puntosActuales)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+                }
             }
         }
     }
 }
 
-// MARK: - Cupón Card V2
-
-struct CuponCardV2: View {
-    let cupon: Cupon
-    let puntosActuales: Int
-    private var disponible: Bool { puntosActuales >= cupon.puntosRequeridos }
+struct FilterChip: View {
+    let titulo: String
+    let seleccionado: Bool
+    let accion: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(disponible ? Color(hex: "#E8F5E9") : Color(.systemGray6))
-                    .frame(width: 42, height: 42)
-                Image(systemName: cupon.iconoSF)
-                    .font(.title3)
-                    .foregroundStyle(disponible ? Color(hex: "#2E7D32") : Color(.systemGray3))
-            }
+        Button(action: accion) {
+            Text(titulo)
+                .font(.caption.bold())
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .background(seleccionado ? Color(hex: "#2E7D32") : Color(.systemGray6))
+                .foregroundStyle(seleccionado ? .white : .primary)
+                .clipShape(Capsule())
+        }
+    }
+}
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(cupon.titulo)
-                    .font(.subheadline.bold())
-                    .foregroundStyle(disponible ? .primary : .secondary)
-                    .lineLimit(2)
-                Text(cupon.descripcion)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+// MARK: - Recompensa Card (tipo wallet / ticket)
+
+struct RecompensaCard: View {
+    let cupon: Cupon
+    let puntosActuales: Int
+    @State private var aparecer = false
+
+    private var disponible: Bool { puntosActuales >= cupon.puntosRequeridos }
+    private var progreso: Double {
+        guard !disponible else { return 1.0 }
+        return Double(puntosActuales) / Double(cupon.puntosRequeridos)
+    }
+    private var faltan: Int { max(0, cupon.puntosRequeridos - puntosActuales) }
+    private var marcaColor: Color { Color(hex: cupon.colorHex) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header con marca y valor
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(cupon.marca.uppercased())
+                        .font(.system(size: 10, weight: .heavy))
+                        .foregroundStyle(marcaColor)
+                        .tracking(1.2)
+                    Text(cupon.valorTexto)
+                        .font(.system(size: 26, weight: .black))
+                        .foregroundStyle(disponible ? .primary : .secondary)
+                }
+                Spacer()
+                ZStack {
+                    Circle()
+                        .fill(marcaColor.opacity(disponible ? 0.15 : 0.08))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: cupon.iconoSF)
+                        .font(.system(size: 20))
+                        .foregroundStyle(disponible ? marcaColor : Color(.systemGray3))
+                }
             }
+            .padding(.bottom, 10)
+
+            // Título
+            Text(cupon.titulo)
+                .font(.subheadline.bold())
+                .foregroundStyle(disponible ? .primary : .secondary)
+                .lineLimit(1)
+
+            Text(cupon.descripcion)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .padding(.top, 2)
 
             Spacer()
 
-            HStack {
-                Image(systemName: "star.fill")
-                    .font(.caption2)
-                    .foregroundStyle(disponible ? Color(hex: "#F9A825") : Color(.systemGray4))
-                Text("\(cupon.puntosRequeridos) pts")
-                    .font(.caption.bold())
-                    .foregroundStyle(disponible ? Color(hex: "#2E7D32") : .secondary)
-                Spacer()
-                if disponible {
+            // Línea punteada divisoria (efecto ticket)
+            HStack(spacing: 4) {
+                ForEach(0..<18, id: \.self) { _ in
+                    Circle()
+                        .fill(Color(.systemGray4).opacity(0.5))
+                        .frame(width: 3, height: 3)
+                }
+            }
+            .padding(.vertical, 8)
+
+            // Footer: puntos + botón
+            if disponible {
+                HStack {
+                    HStack(spacing: 4) {
+                        Image(systemName: "star.fill").font(.caption2).foregroundStyle(.yellow)
+                        Text("\(cupon.puntosRequeridos) pts")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
                     Text("Canjear")
-                        .font(.caption2.bold())
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color(hex: "#2E7D32"))
+                        .font(.caption.bold())
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(marcaColor)
                         .foregroundStyle(.white)
                         .clipShape(Capsule())
                 }
+            } else {
+                VStack(spacing: 6) {
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Color(.systemGray5)).frame(height: 4)
+                            Capsule()
+                                .fill(marcaColor.opacity(0.6))
+                                .frame(width: geo.size.width * progreso, height: 4)
+                        }
+                    }
+                    .frame(height: 4)
+
+                    HStack {
+                        Text("Faltan \(faltan) pts")
+                            .font(.caption2.bold())
+                            .foregroundStyle(marcaColor.opacity(0.7))
+                        Spacer()
+                        Image(systemName: "lock.fill")
+                            .font(.caption2)
+                            .foregroundStyle(Color(.systemGray4))
+                    }
+                }
             }
         }
-        .padding(14)
-        .frame(width: 172, height: 178)
+        .padding(16)
+        .frame(width: 190, height: 210)
         .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(color: .black.opacity(disponible ? 0.08 : 0.04), radius: 8, y: 3)
-        .opacity(disponible ? 1 : 0.65)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(disponible ? marcaColor.opacity(0.25) : Color(.systemGray5), lineWidth: 1.5)
+        )
+        .shadow(color: disponible ? marcaColor.opacity(0.15) : .black.opacity(0.04), radius: 10, y: 5)
+        .scaleEffect(aparecer ? 1 : 0.92)
+        .opacity(aparecer ? (disponible ? 1 : 0.75) : 0)
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(Double.random(in: 0.05...0.2))) {
+                aparecer = true
+            }
+        }
     }
 }
 

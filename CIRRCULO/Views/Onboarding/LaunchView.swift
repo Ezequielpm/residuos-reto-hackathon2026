@@ -28,7 +28,7 @@ struct LaunchView: View {
                 .scaleEffect(escala)
 
                 VStack(spacing: 6) {
-                    Text("CIRRCULO")
+                    Text("Nexia")
                         .font(.system(size: 38, weight: .black))
                         .foregroundStyle(.white)
                         .tracking(4)

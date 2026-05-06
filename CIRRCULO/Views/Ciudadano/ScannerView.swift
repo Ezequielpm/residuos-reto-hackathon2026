@@ -22,6 +22,14 @@ final class ScannerCiudadanoViewModel: ObservableObject {
     @Published var mostrarGuardado = false
     @Published var ptsGuardados = 0
 
+    // Cooldown tras cerrar desambiguación para no re-disparar inmediatamente
+    private var disambiguationCooldownUntil: Date = .distantPast
+
+    // Estabilidad temporal — evitar flickering entre categorías
+    private var pendingTipo: TipoResiduo?
+    private var pendingCount: Int = 0
+    private let requiredStability: Int = 2  // necesita 2 frames de acuerdo para cambiar
+
     private var lastClassification: Date = .distantPast
 
     func processFrame(_ cgImage: CGImage) {
@@ -33,22 +41,54 @@ final class ScannerCiudadanoViewModel: ObservableObject {
         ClassifierService.shared.clasificar(cgImage: cgImage) { [weak self] enriquecido in
             guard let self else { return }
             let r = enriquecido.resultado
+            self.isAnalyzing = false
+
+            // Estabilidad temporal: si el tipo cambió, necesita N frames de acuerdo
+            let newTipo = r.tipo
+            if newTipo == self.resultado?.tipo {
+                // Mismo tipo que ya se muestra — no hacer nada extra
+                self.pendingTipo = nil
+                self.pendingCount = 0
+            } else if newTipo == self.pendingTipo {
+                // Coincide con el candidato pendiente — incrementar
+                self.pendingCount += 1
+                if self.pendingCount < self.requiredStability {
+                    return  // No actualizar UI todavía — esperar más acuerdo
+                }
+                // Suficiente acuerdo — permitir el cambio
+                self.pendingTipo = nil
+                self.pendingCount = 0
+            } else {
+                // Tipo nuevo diferente — empezar a contar
+                self.pendingTipo = newTipo
+                self.pendingCount = 1
+                if self.resultado != nil {
+                    return  // Ya hay un resultado visible — no cambiar aún
+                }
+                // Si no hay resultado previo, mostrar el primero inmediatamente
+            }
 
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                 self.resultado = r
                 self.candidatos = enriquecido.candidatos
                 self.topVisionTags = enriquecido.topVisionTags
             }
-            self.isAnalyzing = false
 
-            // Instrucciones dinámicas del LLM
-            Task {
-                let ins = await FoundationModelsService.shared.instruccionesParaMaterial(r)
-                await MainActor.run { withAnimation { self.instruccionesDinamicas = ins } }
+            // Instrucciones dinámicas del LLM solo si confianza alta
+            if !r.esAmbiguo {
+                Task {
+                    let ins = await FoundationModelsService.shared.instruccionesParaMaterial(r)
+                    await MainActor.run { withAnimation { self.instruccionesDinamicas = ins } }
+                }
+            } else {
+                self.instruccionesDinamicas = nil
             }
 
-            // Si es ambiguo → generar pregunta de desambiguación
-            if r.esAmbiguo && enriquecido.candidatos.count >= 2 && !self.showDisambiguation {
+            // Si es ambiguo → generar pregunta de desambiguación (respetando cooldown)
+            let now = Date()
+            if r.esAmbiguo && enriquecido.candidatos.count >= 2
+                && !self.showDisambiguation
+                && now > self.disambiguationCooldownUntil {
                 self.triggerDisambiguation(candidatos: enriquecido.candidatos, tags: enriquecido.topVisionTags)
             }
         }
@@ -62,7 +102,9 @@ final class ScannerCiudadanoViewModel: ObservableObject {
         Task {
             let pista = await FoundationModelsService.shared
                 .resolverAmbiguedad(opcion1: candidatos[0], opcion2: candidatos[1])
-            withAnimation { disambiguationQuestion = pista; isGeneratingQuestion = false }
+            await MainActor.run {
+                withAnimation { self.disambiguationQuestion = pista; self.isGeneratingQuestion = false }
+            }
         }
     }
 
@@ -81,6 +123,8 @@ final class ScannerCiudadanoViewModel: ObservableObject {
             disambiguationQuestion = nil
         }
         guardarEnTicket(nuevo)
+        // Cooldown de 4 segundos antes de permitir otra desambiguación
+        disambiguationCooldownUntil = Date().addingTimeInterval(4.0)
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
             self?.isPaused = false
         }
@@ -91,6 +135,8 @@ final class ScannerCiudadanoViewModel: ObservableObject {
             showDisambiguation = false
             disambiguationQuestion = nil
         }
+        // Cooldown de 5 segundos para que el usuario mueva el objeto antes de re-disparar
+        disambiguationCooldownUntil = Date().addingTimeInterval(5.0)
         isPaused = false
     }
 
@@ -192,7 +238,7 @@ struct ScannerView: View {
 
             Spacer()
 
-            Text("CIRRCULO")
+            Text("Nexia")
                 .font(.subheadline.bold())
                 .foregroundStyle(.white.opacity(0.9))
                 .tracking(1.5)
@@ -222,30 +268,63 @@ struct ScannerView: View {
 
     private var viewfinder: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 24)
-                .stroke(activeColor.opacity(0.6), lineWidth: 2)
-                .frame(width: 260, height: 260)
-                .shadow(color: activeColor.opacity(0.2), radius: 12)
-
-            ScannerCornerBrackets(color: activeColor)
-                .frame(width: 260, height: 260)
-
-            if let r = vm.resultado, !r.esAmbiguo {
-                VStack(spacing: 8) {
-                    Image(systemName: iconForTipo(r.tipo))
-                        .font(.system(size: 32, weight: .medium))
-                        .foregroundStyle(activeColor)
-                        .padding(18)
-                        .background(activeColor.opacity(0.15))
-                        .clipShape(Circle())
-                        .background(
-                            Circle()
-                                .stroke(activeColor.opacity(0.3), lineWidth: 1.5)
-                                .frame(width: 76, height: 76)
-                        )
+            // Fondo oscuro fuera del viewfinder para indicar área de enfoque
+            GeometryReader { geo in
+                let side: CGFloat = 280
+                let rect = CGRect(
+                    x: (geo.size.width - side) / 2,
+                    y: (geo.size.height - side) / 2,
+                    width: side,
+                    height: side
+                )
+                Path { path in
+                    path.addRect(geo.frame(in: .local))
+                    path.addRoundedRect(in: rect, cornerSize: CGSize(width: 24, height: 24))
                 }
-                .transition(.scale.combined(with: .opacity))
-                .animation(.spring(response: 0.35), value: r.tipo)
+                .fill(.black.opacity(0.35), style: FillStyle(eoFill: true))
+            }
+            .allowsHitTesting(false)
+
+            VStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(activeColor.opacity(0.6), lineWidth: 2)
+                        .frame(width: 280, height: 280)
+                        .shadow(color: activeColor.opacity(0.2), radius: 12)
+
+                    ScannerCornerBrackets(color: activeColor)
+                        .frame(width: 280, height: 280)
+
+                    if let r = vm.resultado, !r.esAmbiguo {
+                        VStack(spacing: 8) {
+                            Image(systemName: iconForTipo(r.tipo))
+                                .font(.system(size: 32, weight: .medium))
+                                .foregroundStyle(activeColor)
+                                .padding(18)
+                                .background(activeColor.opacity(0.15))
+                                .clipShape(Circle())
+                                .background(
+                                    Circle()
+                                        .stroke(activeColor.opacity(0.3), lineWidth: 1.5)
+                                        .frame(width: 76, height: 76)
+                                )
+                        }
+                        .transition(.scale.combined(with: .opacity))
+                        .animation(.spring(response: 0.35), value: r.tipo)
+                    }
+                }
+
+                // Texto guía debajo del viewfinder
+                if vm.resultado == nil {
+                    Text("Centra el objeto dentro del recuadro")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.6))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 6)
+                        .background(.black.opacity(0.4))
+                        .clipShape(Capsule())
+                        .transition(.opacity)
+                }
             }
         }
     }

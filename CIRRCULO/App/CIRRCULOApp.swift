@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 @main
-struct CIRRCULOApp: App {
+struct NexiaApp: App {
     @State private var mostrarLaunch = true
     @State private var auth = AuthManager.shared
     @StateObject private var store = AppDataStore()

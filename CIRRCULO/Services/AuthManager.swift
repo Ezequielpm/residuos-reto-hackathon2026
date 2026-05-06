@@ -31,16 +31,16 @@ final class AuthManager {
     }
 
     static let demoUsers: [DemoUser] = [
-        DemoUser(id: Usuario.idMaria,     nombre: "María López",       email: "maria@cirrculo.mx",    perfil: .ciudadano),
-        DemoUser(id: Usuario.idJorge,     nombre: "Jorge Hernández",   email: "jorge@cirrculo.mx",    perfil: .ciudadano),
-        DemoUser(id: Usuario.idBeto,      nombre: "Beto Sánchez",      email: "beto@cirrculo.mx",     perfil: .pepenador),
-        DemoUser(id: Usuario.idRosa,      nombre: "Rosa García",       email: "rosa@cirrculo.mx",     perfil: .pepenador),
-        DemoUser(id: Usuario.idEcoTech,   nombre: "EcoTech Solutions",  email: "ecotech@cirrculo.mx",  perfil: .empresa),
-        DemoUser(id: Usuario.idGreenCorp, nombre: "GreenCorp MX",      email: "greencorp@cirrculo.mx", perfil: .empresa),
-        DemoUser(id: Usuario.idLaura,     nombre: "Laura Méndez",      email: "laura@cirrculo.mx",    perfil: .puntoAcopio),
-        DemoUser(id: Usuario.idCarmen,    nombre: "Carmen Ruiz",       email: "carmen@cirrculo.mx",   perfil: .puntoAcopio),
-        DemoUser(id: Usuario.idRicardo,   nombre: "Ricardo Flores",    email: "ricardo@cirrculo.mx",  perfil: .centroAcopio),
-        DemoUser(id: Usuario.idElena,     nombre: "Elena Ortiz",       email: "elena@cirrculo.mx",    perfil: .centroAcopio),
+        DemoUser(id: Usuario.idMaria,     nombre: "María López",       email: "maria@nexia.mx",    perfil: .ciudadano),
+        DemoUser(id: Usuario.idJorge,     nombre: "Jorge Hernández",   email: "jorge@nexia.mx",    perfil: .ciudadano),
+        DemoUser(id: Usuario.idBeto,      nombre: "Beto Sánchez",      email: "beto@nexia.mx",     perfil: .pepenador),
+        DemoUser(id: Usuario.idRosa,      nombre: "Rosa García",       email: "rosa@nexia.mx",     perfil: .pepenador),
+        DemoUser(id: Usuario.idEcoTech,   nombre: "EcoTech Solutions",  email: "ecotech@nexia.mx",  perfil: .empresa),
+        DemoUser(id: Usuario.idGreenCorp, nombre: "GreenCorp MX",      email: "greencorp@nexia.mx", perfil: .empresa),
+        DemoUser(id: Usuario.idLaura,     nombre: "Laura Méndez",      email: "laura@nexia.mx",    perfil: .puntoAcopio),
+        DemoUser(id: Usuario.idCarmen,    nombre: "Carmen Ruiz",       email: "carmen@nexia.mx",   perfil: .puntoAcopio),
+        DemoUser(id: Usuario.idRicardo,   nombre: "Ricardo Flores",    email: "ricardo@nexia.mx",  perfil: .centroAcopio),
+        DemoUser(id: Usuario.idElena,     nombre: "Elena Ortiz",       email: "elena@nexia.mx",    perfil: .centroAcopio),
     ]
 
     /// Password de todos los usuarios demo

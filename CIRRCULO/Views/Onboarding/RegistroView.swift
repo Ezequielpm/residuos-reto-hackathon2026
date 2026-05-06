@@ -57,7 +57,7 @@ struct RegistroView: View {
                             .font(.system(size: 32, weight: .bold))
                             .foregroundStyle(.white)
 
-                        Text("CIRRCULO")
+                        Text("Nexia")
                             .font(.system(size: 22, weight: .black))
                             .tracking(3)
                             .foregroundStyle(.white)

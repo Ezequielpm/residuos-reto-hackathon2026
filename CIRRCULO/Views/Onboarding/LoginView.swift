@@ -41,7 +41,7 @@ struct LoginView: View {
                             .scaleEffect(aparecio ? 1 : 0.5)
                             .opacity(aparecio ? 1 : 0)
 
-                        Text("CIRRCULO")
+                        Text("Nexia")
                             .font(.system(size: 32, weight: .black))
                             .tracking(4)
                             .foregroundStyle(.white)

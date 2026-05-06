@@ -3,9 +3,7 @@ import CoreML
 import CoreImage
 
 /// Servicio de clasificación de residuos.
-/// Port 1:1 de la lógica de WasteClassifier del ContentView:
-/// Vision keywords → categoría intermedia → si trusted/alto score retorna directo →
-/// sino BioTraceClassifier decide el material.
+/// Vision keywords + mapeo directo → categoría intermedia → BioTrace confirma material.
 final class ClassifierService {
 
     static let shared = ClassifierService()
@@ -18,6 +16,7 @@ final class ClassifierService {
         let candidatos: [TipoResiduo]
         let topVisionTags: [String]
     }
+
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // MARK: - BioTraceClassifier model (lazy load)
@@ -40,7 +39,74 @@ final class ClassifierService {
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // MARK: - Keywords (idénticos al WasteClassifier original)
+    // MARK: - Mapeo directo de identificadores compuestos de Vision
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    /// Identificadores exactos de VNClassifyImageRequest → categoría directa (alta prioridad)
+    private let directIdentifierMap: [String: Cat] = [
+        // Plásticos
+        "water_bottle": .plastic, "pop_bottle": .plastic, "soda_bottle": .plastic,
+        "plastic_bag": .plastic, "shopping_bag": .plastic, "trash_bag": .plastic,
+        "milk_jug": .plastic, "detergent": .plastic, "shampoo": .plastic,
+        "water_jug": .plastic, "jerry_can": .plastic, "bucket": .plastic,
+        "tupperware": .plastic, "food_container": .plastic, "styrofoam": .plastic,
+        "disposable_cup": .plastic, "straw": .plastic, "plastic_wrap": .plastic,
+
+        // Vidrio
+        "wine_bottle": .glass, "beer_bottle": .glass, "beer_glass": .glass,
+        "wine_glass": .glass, "wineglass": .glass, "goblet": .glass,
+        "cocktail": .glass, "champagne": .glass, "whiskey_jug": .glass,
+        "red_wine": .glass, "white_wine": .glass,
+        "mason_jar": .glass, "jar": .glass, "vase": .glass,
+        "perfume": .glass, "pill_bottle": .glass,
+
+        // Metal / Latas
+        "beer_can": .metal, "soda_can": .metal, "pop_can": .metal,
+        "tin_can": .metal, "soup_can": .metal, "food_can": .metal,
+        "aerosol": .metal, "spray_can": .metal, "aluminum_foil": .metal,
+        "frying_pan": .metal, "wok": .metal, "pot": .metal,
+
+        // Papel
+        "newspaper": .paper, "envelope": .paper, "letter": .paper,
+        "tissue": .paper, "paper_towel": .paper, "toilet_paper": .paper,
+        "magazine": .paper, "comic_book": .paper, "book": .paper,
+
+        // Cartón
+        "cardboard_box": .cardboard, "shipping_box": .cardboard,
+        "pizza_box": .cardboard, "cereal_box": .cardboard,
+        "shoe_box": .cardboard, "egg_carton": .cardboard,
+        "carton": .cardboard, "moving_box": .cardboard,
+
+        // Orgánico — objetos específicos que Vision suele emitir
+        "banana": .organic, "apple": .organic, "orange": .organic,
+        "lemon": .organic, "strawberry": .organic, "pineapple": .organic,
+        "watermelon": .organic, "pizza": .organic, "sandwich": .organic,
+        "bread": .organic, "bagel": .organic, "pretzel": .organic,
+        "hotdog": .organic, "hamburger": .organic, "taco": .organic,
+        "burrito": .organic, "salad": .organic, "broccoli": .organic,
+        "carrot": .organic, "corn": .organic, "mushroom": .organic,
+        "bell_pepper": .organic, "cucumber": .organic, "head_cabbage": .organic,
+        "cauliflower": .organic, "zucchini": .organic, "spaghetti_squash": .organic,
+        "acorn_squash": .organic, "butternut_squash": .organic,
+        "ice_cream": .organic, "chocolate": .organic, "cake": .organic,
+        "coffee": .organic, "espresso": .organic,
+
+        // Electrónico
+        "cellphone": .electronic, "cell_phone": .electronic, "smartphone": .electronic,
+        "laptop": .electronic, "notebook_computer": .electronic, "desktop_computer": .electronic,
+        "keyboard": .electronic, "computer_mouse": .electronic, "mouse": .electronic,
+        "remote_control": .electronic, "television": .electronic, "monitor": .electronic,
+        "iPod": .electronic, "speaker": .electronic, "headphone": .electronic,
+
+        // Textil
+        "jersey": .textile, "t_shirt": .textile, "running_shoe": .textile,
+        "sandal": .textile, "sock": .textile, "cowboy_hat": .textile,
+        "sombrero": .textile, "bonnet": .textile, "backpack": .textile,
+        "handbag": .textile, "purse": .textile, "diaper": .textile,
+    ]
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // MARK: - Keywords (ampliados)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     private let organicKeywords: Set<String> = [
@@ -61,9 +127,11 @@ final class ClassifierService {
     ]
 
     private let plasticKeywords: Set<String> = [
-        "plastic", "wrapper", "packaging", "toy", "pen", "lighter",
-        "toothbrush", "comb", "hanger", "tupperware",
-        "syringe", "crayon", "marker", "eraser", "ruler"
+        "plastic", "bottle", "wrapper", "packaging", "toy", "pen", "lighter",
+        "toothbrush", "comb", "hanger", "tupperware", "container",
+        "syringe", "crayon", "marker", "eraser", "ruler",
+        "cap", "lid", "jug", "gallon", "canteen", "thermos",
+        "bag", "wrap", "film", "foam", "styrofoam", "polystyrene"
     ]
 
     private let glassKeywords: Set<String> = [
@@ -167,11 +235,22 @@ final class ClassifierService {
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     /// Clasificación desde CGImage — método principal.
-    /// Replica exactamente WasteClassifier.classify() del ContentView.
+    /// Recorta el centro del frame (70%) para que el análisis corresponda al viewfinder visible.
     func clasificar(cgImage: CGImage, orientation: CGImagePropertyOrientation = .up,
                     completion: @escaping (ResultadoEnriquecido) -> Void) {
 
-        let handler = VNImageRequestHandler(cgImage: cgImage, orientation: orientation, options: [:])
+        // Recortar al 70% central del frame — corresponde al área del viewfinder en pantalla
+        let croppedImage: CGImage = {
+            let w = CGFloat(cgImage.width)
+            let h = CGFloat(cgImage.height)
+            let cropFraction: CGFloat = 0.70
+            let cropW = w * cropFraction
+            let cropH = h * cropFraction
+            let cropRect = CGRect(x: (w - cropW) / 2, y: (h - cropH) / 2, width: cropW, height: cropH)
+            return cgImage.cropping(to: cropRect) ?? cgImage
+        }()
+
+        let handler = VNImageRequestHandler(cgImage: croppedImage, orientation: orientation, options: [:])
 
         let request = VNClassifyImageRequest { [weak self] req, _ in
             guard let self,
@@ -204,24 +283,25 @@ final class ClassifierService {
             let candidates = Array(sortedCats.prefix(2).map { $0.key })
             let candidatos = candidates.map { $0.toTipoResiduo() }
 
-            // 6) Detectar ambigüedad: segunda categoría tiene >40% del score de la primera
+            // 6) Detectar ambigüedad: segunda categoría tiene >60% del score de la primera
+            //    (antes era 40% — demasiado sensible, causaba falsos ambiguos)
             let isAmbiguous: Bool = {
                 guard sortedCats.count >= 2 else { return false }
                 let first = sortedCats[0].value
                 let second = sortedCats[1].value
-                return second > first * 0.4
+                return second > first * 0.6
             }()
 
-            // 7) DECISIÓN — igual que WasteClassifier:
-            //    trusted (orgánico/electrónico/textil) o score alto → retornar directo
-            if self.trustedCategories.contains(visionCat) || topScore >= 0.5 {
+            // 7) DECISIÓN — trusted (orgánico/electrónico/textil) o score alto → retornar directo
+            //    Bajamos umbral de topScore a 0.35 ya que el mapeo directo da bonus 2x
+            if self.trustedCategories.contains(visionCat) || topScore >= 0.35 {
                 let tipo = visionCat.toTipoResiduo()
-                // Trusted + no ambiguo → boost confianza para evitar falsa ambigüedad
                 let confianza: Float
                 if self.trustedCategories.contains(visionCat) {
                     confianza = max(top.confidence, 0.75)
                 } else {
-                    confianza = top.confidence
+                    // Boost de confianza proporcional al topScore para mapeos directos fuertes
+                    confianza = min(top.confidence + topScore * 0.3, 0.95)
                 }
                 // Trusted categories nunca marcan ambigüedad
                 let finalAmbiguous = isAmbiguous && !self.trustedCategories.contains(visionCat)
@@ -239,11 +319,20 @@ final class ClassifierService {
             }
 
             // 8) FALLBACK — Vision no está seguro → BioTraceClassifier decide el material
-            self.clasificarConBioTrace(cgImage: cgImage, orientation: orientation) { bioTraceTipo in
+            self.clasificarConBioTrace(cgImage: croppedImage, orientation: orientation) { bioTraceTipo in
                 let finalTipo = bioTraceTipo ?? visionCat.toTipoResiduo()
+
+                // Boost confianza si BioTrace coincide con Vision
+                let finalConfianza: Float
+                if bioTraceTipo != nil && bioTraceTipo == visionCat.toTipoResiduo() {
+                    finalConfianza = min(top.confidence + 0.25, 0.90)
+                } else {
+                    finalConfianza = top.confidence
+                }
+
                 let resultado = self.buildResultado(
                     tipo: finalTipo,
-                    confianza: top.confidence,
+                    confianza: finalConfianza,
                     objetoDetectado: detectedName
                 )
                 DispatchQueue.main.async {
@@ -275,28 +364,36 @@ final class ClassifierService {
         let request = VNCoreMLRequest(model: model) { [weak self] req, _ in
             guard let results = req.results as? [VNClassificationObservation],
                   let top = results.first,
-                  top.confidence > 0.35 else {
+                  top.confidence > 0.25 else {
                 completion(nil)
                 return
             }
             completion(self?.bioTraceMapping[top.identifier])
         }
-        request.imageCropAndScaleOption = .scaleFill
+        request.imageCropAndScaleOption = .centerCrop  // centerCrop alinea con el viewfinder
 
         let handler = VNImageRequestHandler(cgImage: cgImage, orientation: orientation, options: [:])
         DispatchQueue.global(qos: .userInitiated).async { try? handler.perform([request]) }
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // MARK: - Vision keyword mapping (idéntico a WasteClassifier.mapVision)
+    // MARK: - Vision keyword mapping (mejorado con mapeo directo)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     private func mapVision(_ observations: [VNClassificationObservation]) -> (Cat, [Cat: Float]) {
         var scores: [Cat: Float] = [:]
+
         for obs in observations.prefix(20) {
-            let tokens = obs.identifier.lowercased()
-                .split(separator: "_")
-                .map(String.init) + [obs.identifier.lowercased()]
+            let id = obs.identifier.lowercased()
+
+            // 1) Mapeo directo por identificador completo (alta prioridad, bonus 2x)
+            if let directCat = directIdentifierMap[id] {
+                scores[directCat, default: 0] += obs.confidence * 2.0
+                continue  // no hacer keyword matching si ya matcheó directo
+            }
+
+            // 2) Fallback: keyword matching por tokens
+            let tokens = id.split(separator: "_").map(String.init) + [id]
             for (cat, kw) in keywordSets {
                 for t in tokens where kw.contains(t) {
                     scores[cat, default: 0] += obs.confidence

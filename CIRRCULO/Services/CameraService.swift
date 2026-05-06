@@ -13,7 +13,7 @@ final class CameraService: NSObject, ObservableObject {
     @Published var permisoConcedido = false
 
     private let session = AVCaptureSession()
-    private let queue = DispatchQueue(label: "mx.enactus.cirrculo.camera", qos: .userInteractive)
+    private let queue = DispatchQueue(label: "mx.enactus.nexia.camera", qos: .userInteractive)
     private let output = AVCaptureVideoDataOutput()
     private let ciContext = CIContext()
 

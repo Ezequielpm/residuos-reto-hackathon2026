@@ -204,4 +204,15 @@ struct Cupon: Identifiable {
     let puntosRequeridos: Int
     let iconoSF: String
     var canjeado: Bool
+    var marca: String = ""          // Nombre comercial (OXXO, Walmart, etc.)
+    var colorHex: String = "#2E7D32" // Color de marca para la card
+    var valorTexto: String = ""     // Ej: "$50 MXN", "10%", "Gratis"
+    var categoria: CuponCategoria = .descuento
+}
+
+enum CuponCategoria: String, CaseIterable {
+    case descuento = "Descuento"
+    case producto = "Producto"
+    case experiencia = "Experiencia"
+    case donacion = "Donación"
 }

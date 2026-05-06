@@ -62,7 +62,7 @@ struct QREstaticoView: View {
                                 Divider().padding(.horizontal, 16)
                                 InstruccionRow(numero: "2", texto: "Pégalo en tu contenedor de reciclaje o en la pared cercana")
                                 Divider().padding(.horizontal, 16)
-                                InstruccionRow(numero: "3", texto: "Los ciudadanos lo escanean con CIRRCULO para verificar su depósito")
+                                InstruccionRow(numero: "3", texto: "Los ciudadanos lo escanean con Nexia para verificar su depósito")
                             }
                             .background(Color(.systemBackground))
                             .clipShape(RoundedRectangle(cornerRadius: 16))

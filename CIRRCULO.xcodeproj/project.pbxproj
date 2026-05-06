@@ -31,6 +31,7 @@
 		D2F64226AA74D129D1476859 /* EntregaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B35E28EB41339AB61A114B63 /* EntregaView.swift */; };
 		D3B3B1B0930E71CF06AEAE4D /* MapaRutasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53A97DE18C7E3CC688A72FEE /* MapaRutasView.swift */; };
 		D57FCE8F2FAABD7C000EA03A /* AlertaRecoleccionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D57FCE8E2FAABD7C000EA03A /* AlertaRecoleccionView.swift */; };
+		D5A988652FAAC46A00AA6E7B /* logo_app_reto1.png in Resources */ = {isa = PBXBuildFile; fileRef = D5A988642FAAC46A00AA6E7B /* logo_app_reto1.png */; };
 		D5C5AEB42FAA9AB400189EC1 /* BioTraceClassifier 1.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = D5C5AEB32FAA9AB400189EC1 /* BioTraceClassifier 1.mlmodel */; };
 		D5C5AEBE2FAAA73700189EC1 /* AppDataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5C5AEBD2FAAA73700189EC1 /* AppDataStore.swift */; };
 		D5C5AEC02FAAB10200189EC1 /* Usuario.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5C5AEBF2FAAB10200189EC1 /* Usuario.swift */; };
@@ -73,6 +74,7 @@
 		CD648102EC5C87B57BFC31B6 /* ClassifierService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassifierService.swift; sourceTree = "<group>"; };
 		D0A256E03B5D89FBF3CFAFAF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		D57FCE8E2FAABD7C000EA03A /* AlertaRecoleccionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlertaRecoleccionView.swift; sourceTree = "<group>"; };
+		D5A988642FAAC46A00AA6E7B /* logo_app_reto1.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = logo_app_reto1.png; sourceTree = "<group>"; };
 		D5C5AEB32FAA9AB400189EC1 /* BioTraceClassifier 1.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = "BioTraceClassifier 1.mlmodel"; sourceTree = "<group>"; };
 		D5C5AEBD2FAAA73700189EC1 /* AppDataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDataStore.swift; sourceTree = "<group>"; };
 		D5C5AEBF2FAAB10200189EC1 /* Usuario.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Usuario.swift; sourceTree = "<group>"; };
@@ -125,6 +127,7 @@
 		3331A8862DA4F539DF0F6902 = {
 			isa = PBXGroup;
 			children = (
+				D5A988642FAAC46A00AA6E7B /* logo_app_reto1.png */,
 				D5C5AEB32FAA9AB400189EC1 /* BioTraceClassifier 1.mlmodel */,
 				026780D8E2250900F5D2CB22 /* CIRRCULO */,
 				6AEFCD09F1F0B37AE1C7E5D6 /* Products */,
@@ -305,6 +308,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D5A988652FAAC46A00AA6E7B /* logo_app_reto1.png in Resources */,
 				096B99FB45935BF6157455D2 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -369,7 +373,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = mx.enactus.cirrculo1;
+				PRODUCT_BUNDLE_IDENTIFIER = mx.enactus.nexia;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -446,7 +450,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = mx.enactus.cirrculo1;
+				PRODUCT_BUNDLE_IDENTIFIER = mx.enactus.nexia;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";

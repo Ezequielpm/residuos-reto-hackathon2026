@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>CIRRCULO</string>
+	<string>Nexia</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -21,11 +21,11 @@
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>NSCameraUsageDescription</key>
-	<string>CIRRCULO necesita la cámara para clasificar residuos con IA y verificar depósitos en puntos de acopio.</string>
+	<string>Nexia necesita la cámara para clasificar residuos con IA y verificar depósitos en puntos de acopio.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>CIRRCULO usa tu ubicación para mostrarte los puntos de acopio más cercanos.</string>
+	<string>Nexia usa tu ubicación para mostrarte los puntos de acopio más cercanos.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>CIRRCULO puede guardar fotos de verificación de tus depósitos.</string>
+	<string>Nexia puede guardar fotos de verificación de tus depósitos.</string>
 	<key>UILaunchStoryboardName</key>
 	<string></string>
 	<key>UISupportedInterfaceOrientations</key>
