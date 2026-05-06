@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import CoreImage.CIFilterBuiltins
 
 struct QREstaticoOxxoView: View {
@@ -81,11 +82,13 @@ struct QREstaticoOxxoView: View {
                         }
                         .padding(.horizontal, 20)
 
-                        // Compartir
-                        ShareLink(item: punto.qrCode, preview: SharePreview("QR — \(punto.nombre)")) {
+                        // Imprimir
+                        Button {
+                            imprimirQR()
+                        } label: {
                             HStack {
-                                Image(systemName: "square.and.arrow.up")
-                                Text("Compartir código QR")
+                                Image(systemName: "printer.fill")
+                                Text("Imprimir código QR")
                                     .font(.headline)
                             }
                             .frame(maxWidth: .infinity)
@@ -125,6 +128,30 @@ struct QREstaticoOxxoView: View {
             }
         }
         return Image(systemName: "qrcode")
+    }
+
+    private func generarQRUIImage(desde texto: String) -> UIImage? {
+        let filter = CIFilter.qrCodeGenerator()
+        filter.message = Data(texto.utf8)
+        filter.correctionLevel = "M"
+        guard let outputImage = filter.outputImage else { return nil }
+        let escalada = outputImage.transformed(by: CGAffineTransform(scaleX: 12, y: 12))
+        let context = CIContext()
+        guard let cgImage = context.createCGImage(escalada, from: escalada.extent) else { return nil }
+        return UIImage(cgImage: cgImage)
+    }
+
+    private func imprimirQR() {
+        guard let imagen = generarQRUIImage(desde: punto.qrCode) else { return }
+        let info = UIPrintInfo(dictionary: nil)
+        info.outputType = .general
+        info.jobName = "QR — \(punto.nombre)"
+        info.orientation = .portrait
+
+        let controller = UIPrintInteractionController.shared
+        controller.printInfo = info
+        controller.printingItem = imagen
+        controller.present(animated: true, completionHandler: nil)
     }
 }
 
