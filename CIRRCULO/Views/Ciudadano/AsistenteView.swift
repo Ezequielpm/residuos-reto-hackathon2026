@@ -224,7 +224,7 @@ struct BurbujaChat: View {
                 }
             }
 
-            Text(textoVisible.isEmpty ? " " : textoVisible)
+            Text(textoFormateado)
                 .font(.subheadline)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 11)
@@ -256,6 +256,18 @@ struct BurbujaChat: View {
                 await typewrite()
             }
         }
+    }
+
+    private var textoFormateado: AttributedString {
+        let raw = textoVisible.isEmpty ? " " : textoVisible
+        if mensaje.esUsuario { return AttributedString(raw) }
+        let opciones = AttributedString.MarkdownParsingOptions(
+            interpretedSyntax: .inlineOnlyPreservingWhitespace
+        )
+        if let attr = try? AttributedString(markdown: raw, options: opciones) {
+            return attr
+        }
+        return AttributedString(raw)
     }
 
     private func typewrite() async {
