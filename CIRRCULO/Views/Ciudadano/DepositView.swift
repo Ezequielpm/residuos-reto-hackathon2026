@@ -223,7 +223,11 @@ struct VerificacionQRView: View {
     let onCancelar: () -> Void
     let puntosAcopio: [PuntoAcopio]
     @State private var puntoDetectado: PuntoAcopio?
-    @State private var procesando = false
+    @State private var camaraAbierta = false
+    @State private var fotoTomada: UIImage?
+    @State private var verificandoFoto = false
+    @State private var mensajeRechazo: String?
+    @State private var materialDetectado: String?
     @State private var mensajeError: String?
 
     var body: some View {
@@ -231,62 +235,26 @@ struct VerificacionQRView: View {
             Color.black.ignoresSafeArea()
 
             if let punto = puntoDetectado {
-                VStack(spacing: 24) {
-                    Spacer()
-
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 56))
-                        .foregroundStyle(Color(hex: "#4CAF50"))
-
-                    Text("QR de \(punto.nombre) detectado")
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-
-                    Text("Ahora toma una foto del material que estás depositando para verificar")
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.8))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-
-                    Button {
-                        procesando = true
-                        Task {
-                            try? await Task.sleep(nanoseconds: 1_800_000_000)
-                            await MainActor.run { onVerificado(punto.id) }
-                        }
-                    } label: {
-                        if procesando {
-                            HStack(spacing: 10) {
-                                ProgressView().tint(.white)
-                                Text("Verificando con IA...")
-                            }
-                            .font(.headline)
-                            .padding(.horizontal, 28)
-                            .padding(.vertical, 14)
-                            .background(Color(hex: "#388E3C"))
-                            .foregroundStyle(.white)
-                            .clipShape(Capsule())
-                        } else {
-                            Label("Tomar foto del material", systemImage: "camera.fill")
-                                .font(.headline)
-                                .padding(.horizontal, 28)
-                                .padding(.vertical, 14)
-                                .background(Color(hex: "#388E3C"))
-                                .foregroundStyle(.white)
-                                .clipShape(Capsule())
-                        }
-                    }
-                    .disabled(procesando)
-
-                    Spacer()
-
-                    Button(action: onCancelar) {
-                        Text("Cancelar")
-                            .foregroundStyle(.white.opacity(0.7))
-                    }
-                    .padding(.bottom, 32)
+                if let foto = fotoTomada {
+                    VerificacionFotoView(
+                        foto: foto,
+                        verificando: verificandoFoto,
+                        materialDetectado: materialDetectado,
+                        mensajeRechazo: mensajeRechazo,
+                        onRetomar: {
+                            fotoTomada = nil
+                            materialDetectado = nil
+                            mensajeRechazo = nil
+                            camaraAbierta = true
+                        },
+                        onCancelar: onCancelar
+                    )
+                } else {
+                    QRConfirmadoView(
+                        punto: punto,
+                        onTomarFoto: { camaraAbierta = true },
+                        onCancelar: onCancelar
+                    )
                 }
             } else {
                 QRScannerRepresentable { codigo in handleDetection(codigo) }
@@ -296,6 +264,20 @@ struct VerificacionQRView: View {
             }
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: puntoDetectado?.id)
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: fotoTomada)
+        .fullScreenCover(isPresented: $camaraAbierta) {
+            CamaraFotoPicker(
+                onCapturada: { imagen in
+                    camaraAbierta = false
+                    fotoTomada = imagen
+                    if let punto = puntoDetectado {
+                        verificarFoto(imagen, en: punto)
+                    }
+                },
+                onCancel: { camaraAbierta = false }
+            )
+            .ignoresSafeArea()
+        }
     }
 
     private func handleDetection(_ codigo: String) {
@@ -307,6 +289,258 @@ struct VerificacionQRView: View {
         }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         puntoDetectado = punto
+    }
+
+    private func verificarFoto(_ imagen: UIImage, en punto: PuntoAcopio) {
+        verificandoFoto = true
+        materialDetectado = nil
+        mensajeRechazo = nil
+
+        guard let cgImage = imagen.cgImage else {
+            verificandoFoto = false
+            mensajeRechazo = "No pudimos procesar la foto. Intenta de nuevo."
+            return
+        }
+        let orientation = orientacionDesde(imagen.imageOrientation)
+
+        ClassifierService.shared.clasificar(cgImage: cgImage, orientation: orientation) { resultado in
+            verificandoFoto = false
+            let tipo = resultado.resultado.tipo
+            let confianza = resultado.resultado.confianza
+            let esReciclable = tipo != .noReciclable
+            let confianzaSuficiente = confianza >= 0.30
+
+            if esReciclable && confianzaSuficiente {
+                materialDetectado = "\(tipo.rawValue) detectado"
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                Task {
+                    try? await Task.sleep(nanoseconds: 900_000_000)
+                    await MainActor.run { onVerificado(punto.id) }
+                }
+            } else {
+                UINotificationFeedbackGenerator().notificationOccurred(.error)
+                mensajeRechazo = esReciclable
+                    ? "No estamos seguros de lo que muestra la foto. Acerca el material y vuelve a tomarla."
+                    : "No detectamos material reciclable. Asegúrate de enfocar el residuo y vuelve a intentar."
+            }
+        }
+    }
+}
+
+// MARK: - QR Confirmado (paso intermedio)
+
+struct QRConfirmadoView: View {
+    let punto: PuntoAcopio
+    let onTomarFoto: () -> Void
+    let onCancelar: () -> Void
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 64))
+                .foregroundStyle(Color(hex: "#4CAF50"))
+
+            VStack(spacing: 6) {
+                Text("QR verificado")
+                    .font(.title3.bold())
+                    .foregroundStyle(.white)
+                Text(punto.nombre)
+                    .font(.headline)
+                    .foregroundStyle(.white.opacity(0.85))
+            }
+
+            VStack(spacing: 10) {
+                Label("Paso 2 · Comprobación con IA", systemImage: "sparkles")
+                    .font(.caption.bold())
+                    .foregroundStyle(Color(hex: "#FFD54F"))
+                Text("Toma una foto del material que estás depositando. La IA verificará que sea reciclable antes de otorgarte los puntos.")
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.8))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            }
+            .padding(.top, 8)
+
+            Button(action: onTomarFoto) {
+                Label("Tomar foto del material", systemImage: "camera.fill")
+                    .font(.headline)
+                    .padding(.horizontal, 28)
+                    .padding(.vertical, 14)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(hex: "#388E3C"), Color(hex: "#2E7D32")],
+                            startPoint: .leading, endPoint: .trailing
+                        )
+                    )
+                    .foregroundStyle(.white)
+                    .clipShape(Capsule())
+                    .shadow(color: Color(hex: "#2E7D32").opacity(0.4), radius: 10, y: 4)
+            }
+            .padding(.top, 8)
+
+            Spacer()
+
+            Button(action: onCancelar) {
+                Text("Cancelar")
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            .padding(.bottom, 32)
+        }
+    }
+}
+
+// MARK: - Verificación de la foto
+
+struct VerificacionFotoView: View {
+    let foto: UIImage
+    let verificando: Bool
+    let materialDetectado: String?
+    let mensajeRechazo: String?
+    let onRetomar: () -> Void
+    let onCancelar: () -> Void
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Spacer()
+
+            ZStack {
+                Image(uiImage: foto)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 280, height: 280)
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(borderColor, lineWidth: 3)
+                    )
+                    .shadow(color: borderColor.opacity(0.5), radius: 12, y: 4)
+
+                if verificando {
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(.black.opacity(0.45))
+                        .frame(width: 280, height: 280)
+                    VStack(spacing: 12) {
+                        ProgressView().tint(.white).scaleEffect(1.5)
+                        Text("Verificando con IA...")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(.white)
+                    }
+                } else if mensajeRechazo != nil {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 64))
+                        .foregroundStyle(.white)
+                        .padding(20)
+                        .background(Color(hex: "#D32F2F").opacity(0.85))
+                        .clipShape(Circle())
+                } else if materialDetectado != nil {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 64))
+                        .foregroundStyle(.white)
+                        .padding(20)
+                        .background(Color(hex: "#388E3C").opacity(0.85))
+                        .clipShape(Circle())
+                }
+            }
+
+            if let material = materialDetectado, !verificando {
+                Label(material, systemImage: "sparkles")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 10)
+                    .background(Color(hex: "#388E3C"))
+                    .clipShape(Capsule())
+            }
+
+            if let mensaje = mensajeRechazo {
+                Text(mensaje)
+                    .font(.subheadline)
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 28)
+
+                Button(action: onRetomar) {
+                    Label("Tomar otra foto", systemImage: "camera.rotate.fill")
+                        .font(.headline)
+                        .padding(.horizontal, 28)
+                        .padding(.vertical, 14)
+                        .background(Color(hex: "#388E3C"))
+                        .foregroundStyle(.white)
+                        .clipShape(Capsule())
+                }
+            }
+
+            Spacer()
+
+            Button(action: onCancelar) {
+                Text("Cancelar")
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            .padding(.bottom, 32)
+        }
+    }
+
+    private var borderColor: Color {
+        if mensajeRechazo != nil { return Color(hex: "#D32F2F") }
+        if materialDetectado != nil { return Color(hex: "#4CAF50") }
+        return .white.opacity(0.4)
+    }
+}
+
+private func orientacionDesde(_ ui: UIImage.Orientation) -> CGImagePropertyOrientation {
+    switch ui {
+    case .up:            return .up
+    case .upMirrored:    return .upMirrored
+    case .down:          return .down
+    case .downMirrored:  return .downMirrored
+    case .left:          return .left
+    case .leftMirrored:  return .leftMirrored
+    case .right:         return .right
+    case .rightMirrored: return .rightMirrored
+    @unknown default:    return .up
+    }
+}
+
+// MARK: - Cámara nativa para captura de foto
+
+struct CamaraFotoPicker: UIViewControllerRepresentable {
+    let onCapturada: (UIImage) -> Void
+    let onCancel: () -> Void
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        if UIImagePickerController.isSourceTypeAvailable(.camera) {
+            picker.sourceType = .camera
+            picker.cameraCaptureMode = .photo
+        } else {
+            picker.sourceType = .photoLibrary
+        }
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: CamaraFotoPicker
+        init(_ parent: CamaraFotoPicker) { self.parent = parent }
+
+        func imagePickerController(_ picker: UIImagePickerController,
+                                   didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            if let image = info[.originalImage] as? UIImage {
+                parent.onCapturada(image)
+            } else {
+                parent.onCancel()
+            }
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.onCancel()
+        }
     }
 }
 
